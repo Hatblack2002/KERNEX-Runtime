@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(kernex_android LANGUAGES CXX)
+add_library(kernex_android SHARED native-lib.cpp)
+target_compile_features(kernex_android PRIVATE cxx_std_17)
+target_compile_options(kernex_android PRIVATE -Wall -Wextra -Werror)
+get_filename_component(KERNEX_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../../" ABSOLUTE)
+target_include_directories(kernex_android PRIVATE "${KERNEX_ROOT}/src")
