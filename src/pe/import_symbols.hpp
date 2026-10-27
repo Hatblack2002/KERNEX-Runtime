@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pe/pe_image.hpp"
+#include "pe/imports.hpp"
 
 #include <cstddef>
 #include <cstdint>
