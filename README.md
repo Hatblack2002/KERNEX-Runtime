@@ -13,6 +13,7 @@ KERNEX is a research project exploring a native Android ARM64 runtime for select
 - Parse PE32 and PE32+ headers and section tables with bounds checks.
 - Translate file-backed RVAs safely.
 - Extract bounded PE import DLL names and metadata for import, TLS, and delay-import directories.
+- Decode and interpret a deliberately limited x86-32 instruction subset (register-immediate MOV, NOP, PUSH/POP, RET, relative CALL/JMP, short conditional branches, and INT3 trap).
 - Reject truncated files, unmapped RVAs, and section data that extends beyond the input.
 - Keep hypotheses and experimental results explicitly separate.
 
