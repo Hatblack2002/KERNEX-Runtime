@@ -16,6 +16,7 @@ struct ImportSymbol {
   std::string name;
   std::uint16_t hint{};
   std::uint16_t ordinal{};
+  std::uint32_t iat_rva{};
   bool by_ordinal{};
 };
 
@@ -71,6 +72,7 @@ inline ImportSymbolsResult read_import_symbols(
       return fail("import module table is inconsistent");
     const std::uint32_t lookup_rva = original_thunk != 0 ? original_thunk : first_thunk;
     if (lookup_rva == 0) return fail("import descriptor has no lookup thunk");
+    if (first_thunk == 0) return fail("import descriptor has no IAT RVA");
 
     const std::size_t width = image.is_pe32_plus ? 8 : 4;
     const std::uint64_t ordinal_flag = image.is_pe32_plus
@@ -99,8 +101,11 @@ inline ImportSymbolsResult read_import_symbols(
       if (result.symbols.size() >= max_symbols)
         return fail("import symbol limit exceeded");
 
+      const std::uint64_t iat_rva64 = static_cast<std::uint64_t>(first_thunk) + j * width;
+      if (iat_rva64 > 0xffffffffull) return fail("IAT RVA overflow");
       ImportSymbol symbol;
       symbol.module = module_result.modules[module_index];
+      symbol.iat_rva = static_cast<std::uint32_t>(iat_rva64);
       if ((thunk & ordinal_flag) != 0) {
         if ((thunk & ~(ordinal_flag | 0xffffull)) != 0)
           return fail("ordinal import thunk has reserved bits set");
