@@ -187,6 +187,7 @@ struct Cpu32 {
         std::uint32_t value{};
         if (ins.op == Op::add_rm32_r32) { value = lhs + rhs; set_add_flags(lhs, rhs, value); }
         else if (ins.op == Op::sub_rm32_r32 || ins.op == Op::cmp_rm32_r32) { value = lhs - rhs; set_sub_flags(lhs, rhs, value); }
+        else if (ins.op == Op::test_rm32_r32) { value = lhs & rhs; set_logic_flags(value); }
         else { value = lhs ^ rhs; set_logic_flags(value); }
         if (ins.op != Op::cmp_rm32_r32 && ins.op != Op::test_rm32_r32 &&
             !write_operand(ins, value)) { error = "ALU destination outside memory"; return false; }
