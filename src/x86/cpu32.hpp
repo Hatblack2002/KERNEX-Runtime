@@ -86,12 +86,14 @@ struct Cpu32 {
 
   void set_add_flags(std::uint32_t a, std::uint32_t b, std::uint32_t value) {
     set_logic_flags(value);
+    if (((a ^ b ^ value) & 0x10u) != 0) eflags |= 0x10;
     if (static_cast<std::uint64_t>(a) + b > UINT32_MAX) eflags |= 0x1;
     if ((~(a ^ b) & (a ^ value) & 0x80000000u) != 0) eflags |= 0x800;
   }
 
   void set_sub_flags(std::uint32_t a, std::uint32_t b, std::uint32_t value) {
     set_logic_flags(value);
+    if (((a ^ b ^ value) & 0x10u) != 0) eflags |= 0x10;
     if (a < b) eflags |= 0x1;
     if (((a ^ b) & (a ^ value) & 0x80000000u) != 0) eflags |= 0x800;
   }
@@ -178,6 +180,21 @@ struct Cpu32 {
         std::uint32_t value{};
         if (!read_operand(ins, value)) { error = "MOV source outside memory"; return false; }
         regs[ins.reg] = value; eip = next; return true;
+      }
+      case Op::mov_rm32_imm:
+        if (!write_operand(ins, ins.immediate)) { error = "MOV immediate destination outside memory"; return false; }
+        eip = next; return true;
+      case Op::add_rm32_imm: case Op::sub_rm32_imm: case Op::cmp_rm32_imm: {
+        std::uint32_t lhs{};
+        if (!read_operand(ins, lhs)) { error = "arithmetic immediate source outside memory"; return false; }
+        const std::uint32_t rhs = ins.immediate;
+        const std::uint32_t value = ins.op == Op::add_rm32_imm ? lhs + rhs : lhs - rhs;
+        if (ins.op == Op::add_rm32_imm) set_add_flags(lhs, rhs, value);
+        else set_sub_flags(lhs, rhs, value);
+        if (ins.op != Op::cmp_rm32_imm && !write_operand(ins, value)) {
+          error = "arithmetic immediate destination outside memory"; return false;
+        }
+        eip = next; return true;
       }
       case Op::add_rm32_r32: case Op::sub_rm32_r32: case Op::xor_rm32_r32:
       case Op::cmp_rm32_r32: case Op::test_rm32_r32: {
