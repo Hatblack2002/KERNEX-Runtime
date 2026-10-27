@@ -89,7 +89,11 @@ struct Cpu32 {
       case Op::pop_reg: {
         std::uint32_t value{};
         if (!read32(regs[4], value)) { error = "stack read outside memory"; return false; }
-        regs[ins.reg] = value; regs[4] += 4; eip = next; return true;
+        // POP ESP is special: the popped value becomes ESP; the
+        // implicit stack increment must not overwrite it.
+        if (ins.reg == 4) regs[4] = value;
+        else { regs[ins.reg] = value; regs[4] += 4; }
+        eip = next; return true;
       }
       case Op::call_rel32: {
         if (regs[4] < 4) { error = "stack underflow"; return false; }
