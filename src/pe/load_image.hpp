@@ -13,6 +13,9 @@ namespace kernex::pe {
 struct LoadResult {
   bool ok{};
   ImageInfo image;
+  // Preferred virtual base currently represented by pointers in memory.
+  // load_image starts at the PE's preferred ImageBase; rebasing updates this.
+  std::uint64_t loaded_base{};
   std::vector<std::uint8_t> memory;
   std::string error;
 };
@@ -88,6 +91,7 @@ inline LoadResult load_image(const std::vector<std::uint8_t>& file,
   }
 
   result.image = image;
+  result.loaded_base = image.image_base;
   result.ok = true;
   return result;
 }
@@ -106,7 +110,7 @@ inline bool apply_base_relocations(LoadResult& loaded, std::uint64_t actual_base
     return fail("image must be successfully mapped before relocation");
 
   const auto& image = loaded.image;
-  if (actual_base == image.image_base) {
+  if (actual_base == loaded.loaded_base) {
     if (error) error->clear();
     return true;
   }
@@ -129,7 +133,9 @@ inline bool apply_base_relocations(LoadResult& loaded, std::uint64_t actual_base
     return fail("base relocation directory exceeds mapped image");
 
   const std::uint32_t expected_type = image.is_pe32_plus ? 10u : 3u;
-  const std::uint64_t delta = actual_base - image.image_base;
+  // Relocations are relative to the base currently represented in memory,
+  // not always the preferred ImageBase. This makes repeated rebasing idempotent.
+  const std::uint64_t delta = actual_base - loaded.loaded_base;
   std::uint64_t cursor = directory_rva;
   const std::uint64_t directory_end = cursor + directory_size;
   if (directory_end > relocated.size())
@@ -182,6 +188,7 @@ inline bool apply_base_relocations(LoadResult& loaded, std::uint64_t actual_base
   }
 
   loaded.memory.swap(relocated);
+  loaded.loaded_base = actual_base;
   if (error) error->clear();
   return true;
 }
