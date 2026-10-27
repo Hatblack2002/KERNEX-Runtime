@@ -77,6 +77,16 @@ int main() {
   if (!sib.step() || !sib.step() || !sib.step() || !sib.step() || !sib.step()) return 19;
   if (sib.regs[7] != 0x12345678u) return 20;
 
+  kernex::x86::Cpu32 signed_push(64);
+  signed_push.code = {0x6a,0xff,0x58}; // push -1; pop eax
+  if (!signed_push.step() || !signed_push.step() || signed_push.regs[0] != 0xffffffffu) return 21;
+
+  kernex::x86::Cpu32 near_branch(64);
+  near_branch.code = {0x0f,0x84,0x01,0,0,0,0xcc,0x90}; // JZ skips INT3
+  near_branch.eflags |= 0x40u;
+  if (!near_branch.step() || near_branch.eip != 7) return 22;
+  if (!near_branch.step() || near_branch.eip != 8) return 23;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
