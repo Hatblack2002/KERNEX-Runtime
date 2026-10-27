@@ -14,7 +14,8 @@ enum class Op : std::uint8_t {
   sub_rm32_r32, sub_r32_rm32, xor_rm32_r32, xor_r32_rm32,
   cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32,
   add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32,
-  add_rm32_imm, sub_rm32_imm, cmp_rm32_imm, mov_rm32_imm
+  add_rm32_imm, sub_rm32_imm, cmp_rm32_imm, mov_rm32_imm,
+  inc_reg, dec_reg, call_rm32, jmp_rm32, push_rm32
 };
 
 struct Instruction {
@@ -43,6 +44,12 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   }
   const std::uint8_t op = bytes[0];
   if (op == 0x90) { out.op = Op::nop; out.length = 1; return out; }
+  if (op >= 0x40 && op <= 0x4f) {
+    out.op = op < 0x48 ? Op::inc_reg : Op::dec_reg;
+    out.reg = op & 7;
+    out.length = 1;
+    return out;
+  }
   if (op == 0xc3) { out.op = Op::ret; out.length = 1; return out; }
   if (op == 0xcc) { out.op = Op::int3; out.length = 1; return out; }
   if (op == 0xc9) { out.op = Op::leave; out.length = 1; return out; }
@@ -81,7 +88,7 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   // displacement without reading beyond the provided instruction window.
   if (op == 0x89 || op == 0x8b || op == 0x01 || op == 0x03 ||
       op == 0x29 || op == 0x2b || op == 0x31 || op == 0x33 ||
-      op == 0x39 || op == 0x3b || op == 0x85 || op == 0x81 || op == 0x83 || op == 0xc7) {
+      op == 0x39 || op == 0x3b || op == 0x85 || op == 0x81 || op == 0x83 || op == 0xc7 || op == 0xff) {
     if (size < 2) { out.error = "truncated ModRM instruction"; return out; }
     const std::uint8_t m = bytes[1];
     out.mod = m >> 6; out.reg = (m >> 3) & 7; out.rm = m & 7;
@@ -152,6 +159,15 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
     if (op == 0xc7) {
       if (out.reg != 0) { out.error = "unsupported MOV immediate group extension"; return out; }
       out.op = Op::mov_rm32_imm;
+      return out;
+    }
+    if (op == 0xff) {
+      switch (out.reg) {
+        case 2: out.op = Op::call_rm32; break;
+        case 4: out.op = Op::jmp_rm32; break;
+        case 6: out.op = Op::push_rm32; break;
+        default: out.error = "unsupported FF group extension"; out.op = Op::invalid; break;
+      }
       return out;
     }
     switch (op) {
