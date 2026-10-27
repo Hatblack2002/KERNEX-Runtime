@@ -94,6 +94,13 @@ int main() {
     ok &= check(kernex::pe::read_u64(loaded64.memory, 0x1010, relocated64) &&
                 relocated64 == 0x180001234ull,
                 "DIR64 relocation applies 64-bit base delta");
+    auto wrong_type = kernex::pe::load_image(file64);
+    put16(wrong_type.memory, 0x1108, 0x3010);
+    const auto before_wrong_type = wrong_type.memory;
+    ok &= check(!kernex::pe::apply_base_relocations(wrong_type, 0x180000000ull),
+                "PE32 relocation type rejected for PE32+ image");
+    ok &= check(wrong_type.memory == before_wrong_type,
+                "bitness-incompatible relocation leaves image unchanged");
   }
   ok &= check(!kernex::pe::load_image(file, 0x1000).ok, "image allocation limit enforced");
   if (loaded.ok) {
@@ -113,6 +120,13 @@ int main() {
     ok &= check(!kernex::pe::apply_base_relocations(malformed, 0x500000, &relocation_error),
                 "malformed relocation block rejected");
     ok &= check(malformed.memory == before, "failed relocation leaves mapped image unchanged");
+    auto bad_page = loaded;
+    put32(bad_page.memory, 0x1100, 0x1001);
+    const auto before_bad_page = bad_page.memory;
+    ok &= check(!kernex::pe::apply_base_relocations(bad_page, 0x500000),
+                "misaligned relocation page RVA rejected");
+    ok &= check(bad_page.memory == before_bad_page,
+                "invalid relocation page leaves image unchanged");
     auto no_relocations = loaded;
     no_relocations.image.base_relocation_directory_rva = 0;
     no_relocations.image.base_relocation_directory_size = 0;
