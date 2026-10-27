@@ -62,7 +62,8 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
     if (size < 2) { out.error = "truncated rel8 branch"; return out; }
     out.op = op == 0xeb ? Op::jmp_rel8 : Op::jcc_rel8;
     out.length = 2;
-    out.displacement = static_cast<std::int8_t>(bytes[1]);
+    out.displacement = bytes[1] < 0x80 ? static_cast<std::int32_t>(bytes[1])
+                                             : static_cast<std::int32_t>(bytes[1]) - 256;
     if (out.op == Op::jcc_rel8) out.condition = op & 0x0f;
     return out;
   }
