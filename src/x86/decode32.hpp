@@ -8,7 +8,7 @@
 namespace kernex::x86 {
 
 enum class Op : std::uint8_t {
-  invalid, nop, ret, int3, push_reg, pop_reg, mov_reg_imm32,
+  invalid, nop, ret, int3, push_reg, pop_reg, push_imm32, leave, mov_reg_imm32,
   call_rel32, jmp_rel32, jmp_rel8, jcc_rel8
 };
 
@@ -32,6 +32,16 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   if (op == 0x90) { out.op = Op::nop; out.length = 1; return out; }
   if (op == 0xc3) { out.op = Op::ret; out.length = 1; return out; }
   if (op == 0xcc) { out.op = Op::int3; out.length = 1; return out; }
+  if (op == 0xc9) { out.op = Op::leave; out.length = 1; return out; }
+  if (op == 0x68) {
+    if (size < 5) { out.error = "truncated push imm32"; return out; }
+    out.op = Op::push_imm32; out.length = 5;
+    out.immediate = static_cast<std::uint32_t>(bytes[1]) |
+                    (static_cast<std::uint32_t>(bytes[2]) << 8) |
+                    (static_cast<std::uint32_t>(bytes[3]) << 16) |
+                    (static_cast<std::uint32_t>(bytes[4]) << 24);
+    return out;
+  }
   if (op >= 0x50 && op <= 0x57) {
     out.op = Op::push_reg; out.reg = op - 0x50; out.length = 1; return out;
   }
