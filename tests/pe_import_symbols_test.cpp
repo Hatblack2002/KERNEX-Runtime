@@ -1,4 +1,4 @@
-#include "pe/import_symbols.hpp"
+#include "pe/bind_imports.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -46,6 +46,32 @@ int main() {
   const auto& named = symbols.symbols[0];
   if (named.module != "KERNEL32.dll" || named.name != "Sleep" ||
       named.hint != 7 || named.by_ordinal) return 3;
+
+  if (named.iat_rva != 0x1070) {
+    std::cerr << "IAT destination RVA was not retained\\n"; return 6;
+  }
+  auto mapped = kernex::pe::load_image(bytes);
+  if (!mapped.ok) { std::cerr << "image mapping failed: " << mapped.error << "\\n"; return 7; }
+  auto binding = kernex::pe::bind_imports(mapped, bytes,
+      [](const kernex::pe::ImportSymbol& symbol, std::uint64_t& address) {
+        if (symbol.module != "KERNEL32.dll" || symbol.name != "Sleep" || symbol.by_ordinal)
+          return false;
+        address = 0x76543210u;
+        return true;
+      });
+  std::uint32_t bound_address = 0;
+  if (!binding.ok || binding.bound_count != 1 ||
+      !kernex::pe::read_u32(mapped.memory, 0x1070, bound_address) ||
+      bound_address != 0x76543210u) {
+    std::cerr << "IAT binding failed: " << binding.error << "\\n"; return 8;
+  }
+  auto unchanged = kernex::pe::load_image(bytes);
+  const auto before_binding = unchanged.memory;
+  auto unresolved = kernex::pe::bind_imports(unchanged, bytes,
+      [](const kernex::pe::ImportSymbol&, std::uint64_t&) { return false; });
+  if (unresolved.ok || unchanged.memory != before_binding) {
+    std::cerr << "failed import binding modified mapped image\\n"; return 9;
+  }
 
   put32(bytes, 0x250, 0x80000005u);
   put32(bytes, 0x254, 0);
