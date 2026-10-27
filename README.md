@@ -6,7 +6,7 @@ KERNEX is a research project exploring a native Android ARM64 runtime for select
 
 **Early research scaffold.** The repository now has a bounds-checked PE32/PE32+ header and section parser, import metadata reader, a bounded PE image-layout mapper, and a limited x86-32 decoder/interpreter. GitHub Actions has verified the portable C++17 tests on Linux x86-64 and ARM64, the stress tests under AddressSanitizer and UndefinedBehaviorSanitizer, and an Android NDK arm64-v8a cross-build of the native utilities. The Android job compiles native binaries only; it does not build an APK or verify execution on a device.
 
-The image mapper copies headers and file-backed section bytes into a zero-initialized buffer at their virtual addresses. It rejects oversized allocations, out-of-range entry points, invalid section ranges, and overlapping virtual sections. The mapper also supports bounded PE32 HIGHLOW and PE32+ DIR64 base relocations. It does **not** resolve imports, initialize TLS, enforce per-section memory permissions, emulate Windows APIs, translate graphics, or execute a PE application end-to-end. There is no Android APK or app-compatibility claim at this stage.
+The image mapper copies headers and file-backed section bytes into a zero-initialized buffer at their virtual addresses. It rejects oversized allocations, out-of-range entry points, invalid section ranges, and overlapping virtual sections. The mapper also supports bounded PE32 HIGHLOW and PE32+ DIR64 base relocations. A separate preparation pipeline now maps the image, optionally rebases it, and binds regular import address table entries through a caller-provided resolver; the resolver must supply guest/runtime addresses and is not a Windows API implementation. TLS initialization, delay-import processing, per-section memory permissions, Windows API semantics, graphics translation, and real application startup remain unsupported. There is no Android APK or app-compatibility claim at this stage.
 
 ## Current milestone
 
@@ -18,7 +18,7 @@ The image mapper copies headers and file-backed section bytes into a zero-initia
 - Extract bounded PE import DLL names and metadata for import, TLS, and delay-import directories.
 - Map PE headers and section data into a bounded, zero-filled image-layout buffer.
 - Apply validated PE32 HIGHLOW and PE32+ DIR64 base relocations when the image is rebased.
-- Bind import address table slots transactionally through an explicit host-provided symbol resolver.
+- Prepare a mapped image through a single pipeline: map, optionally relocate, and transactionally bind regular import address table slots through an explicit caller-provided symbol resolver.
 - Decode and interpret a deliberately limited x86-32 instruction subset, including register-immediate MOV, NOP, INT3, PUSH/POP, LEAVE, RET, relative CALL/JMP, and short conditional branches.
 - Execute synthetic mapped PE32 entrypoints through that subset with a separate bounded stack and instruction budget; this is a test harness, not general Windows process startup.
 - Exercise malformed PE files, truncation, decoder opcode space, deterministic mutations, and memory/control-flow boundaries in CI.
