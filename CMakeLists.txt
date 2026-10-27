@@ -27,4 +27,8 @@ if(BUILD_TESTING)
   add_executable(kernex_x86_decode_test tests/x86_decode_test.cpp)
   target_link_libraries(kernex_x86_decode_test PRIVATE kernex_common)
   add_test(NAME x86_decode COMMAND kernex_x86_decode_test)
+
+  add_executable(kernex_x86_cpu32_test tests/x86_cpu32_test.cpp)
+  target_link_libraries(kernex_x86_cpu32_test PRIVATE kernex_common)
+  add_test(NAME x86_cpu32 COMMAND kernex_x86_cpu32_test)
 endif()
