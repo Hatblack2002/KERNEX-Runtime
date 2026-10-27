@@ -54,7 +54,7 @@ static std::vector<std::uint8_t> make_pe64() {
   put32(b, s + 36, 0x60000020);
   for (std::size_t i = 0; i < 0x200; ++i) b[0x200 + i] = static_cast<std::uint8_t>(i & 0xff);
   // A DIR64 relocation at RVA 0x1010; the block lives at RVA 0x1100.
-  put32(b, 0x210, 0x4001234); put32(b, 0x214, 1);
+  put32(b, 0x210, 0x40001234); put32(b, 0x214, 1);
   put32(b, 0x300, 0x1000); put32(b, 0x304, 12);
   put16(b, 0x308, 0xa010); put16(b, 0x30a, 0);
   return b;
