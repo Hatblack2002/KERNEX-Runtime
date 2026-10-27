@@ -19,12 +19,19 @@ static std::vector<std::uint8_t> make_pe32() {
   put16(b, o, 0x10b); put32(b, o + 16, 0x1000); put32(b, o + 28, 0x400000);
   put32(b, o + 32, 0x1000); put32(b, o + 36, 0x200);
   put32(b, o + 56, 0x3000); put32(b, o + 60, 0x200);
+  put32(b, o + 92, 16); // PE32 data-directory count
+  put32(b, o + 96 + 5 * 8, 0x1100); // Base relocation directory RVA
+  put32(b, o + 96 + 5 * 8 + 4, 12);
   const std::size_t s = o + 224;
   b[s] = '.'; b[s + 1] = 't'; b[s + 2] = 'e'; b[s + 3] = 'x'; b[s + 4] = 't';
   put32(b, s + 8, 0x180); put32(b, s + 12, 0x1000);
   put32(b, s + 16, 0x200); put32(b, s + 20, 0x200);
   put32(b, s + 36, 0x60000020);
   for (std::size_t i = 0; i < 0x200; ++i) b[0x200 + i] = static_cast<std::uint8_t>(i & 0xff);
+  // A HIGHLOW relocation at RVA 0x1010; the block lives at RVA 0x1100.
+  put32(b, 0x210, 0x00401234);
+  put32(b, 0x300, 0x1000); put32(b, 0x304, 12);
+  put16(b, 0x308, 0x3010); put16(b, 0x30a, 0);
   return b;
 }
 static bool check(bool condition, const char* message) {
@@ -46,6 +53,29 @@ int main() {
                 "virtual tail remains zero-filled");
   }
   ok &= check(!kernex::pe::load_image(file, 0x1000).ok, "image allocation limit enforced");
+  if (loaded.ok) {
+    auto relocated = loaded;
+    std::string relocation_error;
+    ok &= check(kernex::pe::apply_base_relocations(relocated, 0x500000, &relocation_error),
+                "PE32 HIGHLOW base relocation succeeds");
+    if (relocated.memory.size() == 0x3000) {
+      std::uint32_t relocated_value = 0;
+      ok &= check(kernex::pe::read_u32(relocated.memory, 0x1010, relocated_value) &&
+                  relocated_value == 0x00501234,
+                  "HIGHLOW relocation applies base delta");
+    }
+    auto malformed = loaded;
+    put32(malformed.memory, 0x1104, 7);
+    const auto before = malformed.memory;
+    ok &= check(!kernex::pe::apply_base_relocations(malformed, 0x500000, &relocation_error),
+                "malformed relocation block rejected");
+    ok &= check(malformed.memory == before, "failed relocation leaves mapped image unchanged");
+    auto no_relocations = loaded;
+    no_relocations.image.base_relocation_directory_rva = 0;
+    no_relocations.image.base_relocation_directory_size = 0;
+    ok &= check(!kernex::pe::apply_base_relocations(no_relocations, 0x500000),
+                "rebasing without relocation directory rejected");
+  }
   auto truncated = file;
   truncated.resize(0x210);
   ok &= check(!kernex::pe::load_image(truncated).ok, "truncated section rejected");
