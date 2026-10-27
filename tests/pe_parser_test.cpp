@@ -107,6 +107,8 @@ int main() {
   ok &= check(!kernex::pe::parse(empty).ok, "empty input rejected");
   auto with_imports = bytes;
   put32(with_imports, 0x98 + 92, 16); // PE32 NumberOfRvaAndSizes
+  put32(with_imports, 0x98 + 96 + 5 * 8, 0x1030); // Base relocation directory RVA
+  put32(with_imports, 0x98 + 96 + 5 * 8 + 4, 12);
   put32(with_imports, 0x98 + 96 + 9 * 8, 0x1010); // TLS directory RVA (index 9)
   put32(with_imports, 0x98 + 96 + 9 * 8 + 4, 24);
   put32(with_imports, 0x98 + 96 + 13 * 8, 0x1020); // delay-import directory
@@ -118,6 +120,9 @@ int main() {
   if (dirs.ok) {
     ok &= check(dirs.image.import_directory_rva == 0x1008 && dirs.image.import_directory_size == 40,
                 "import directory extracted");
+    ok &= check(dirs.image.base_relocation_directory_rva == 0x1030 &&
+                dirs.image.base_relocation_directory_size == 12,
+                "base relocation directory extracted");
     ok &= check(dirs.image.tls_directory_rva == 0x1010 && dirs.image.tls_directory_size == 24,
                 "TLS directory extracted");
     ok &= check(dirs.image.delay_import_directory_rva == 0x1020 && dirs.image.delay_import_directory_size == 64,
