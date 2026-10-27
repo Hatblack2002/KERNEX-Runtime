@@ -65,6 +65,31 @@ inline bool read_u64(const std::vector<std::uint8_t>& b, std::size_t off, std::u
   return true;
 }
 
+// Translate an RVA only when the requested bytes are backed by the input file.
+// Virtual-only section tails (zero-filled at load time) intentionally have no file offset.
+inline bool rva_to_file_offset(const ImageInfo& image, std::size_t file_size,
+                               std::uint32_t rva, std::uint32_t length,
+                               std::size_t& file_offset) {
+  const std::uint64_t end = static_cast<std::uint64_t>(rva) + length;
+  if (end > 0x100000000ull) return false;
+  if (rva < image.size_of_headers && end <= image.size_of_headers &&
+      range_ok(file_size, rva, length)) {
+    file_offset = static_cast<std::size_t>(rva);
+    return true;
+  }
+  for (const auto& section : image.sections) {
+    if (rva < section.virtual_address) continue;
+    const std::uint64_t delta = static_cast<std::uint64_t>(rva) - section.virtual_address;
+    if (delta > section.raw_size || length > static_cast<std::uint64_t>(section.raw_size) - delta)
+      continue;
+    const std::uint64_t offset = static_cast<std::uint64_t>(section.raw_offset) + delta;
+    if (!range_ok(file_size, offset, length)) return false;
+    file_offset = static_cast<std::size_t>(offset);
+    return true;
+  }
+  return false;
+}
+
 inline ParseResult parse(const std::vector<std::uint8_t>& b) {
   ParseResult result;
   auto fail = [&](const char* message) -> ParseResult {
