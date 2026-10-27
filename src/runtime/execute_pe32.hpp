@@ -40,12 +40,19 @@ inline ExecutionResult execute_mapped_pe32(const pe::LoadResult& mapped,
     return fail("configured stack size is invalid for 32-bit address space");
 
   const std::size_t total_size = mapped.memory.size() + stack_size;
+  if (mapped.loaded_base > UINT32_MAX ||
+      total_size > static_cast<std::uint64_t>(UINT32_MAX) - mapped.loaded_base)
+    return fail("PE32 image and stack exceed guest virtual address space");
   x86::Cpu32 cpu(total_size);
   std::copy(mapped.memory.begin(), mapped.memory.end(), cpu.memory.begin());
   cpu.code = mapped.memory;
-  cpu.eip = mapped.image.entry_point;
-  cpu.regs[4] = static_cast<std::uint32_t>(total_size - 4);
-  if (!cpu.write32(cpu.regs[4], static_cast<std::uint32_t>(cpu.code.size())))
+  cpu.memory_base = static_cast<std::uint32_t>(mapped.loaded_base);
+  cpu.code_base = static_cast<std::uint32_t>(mapped.loaded_base);
+  cpu.eip = cpu.code_base + mapped.image.entry_point;
+  cpu.regs[4] = cpu.code_base + static_cast<std::uint32_t>(total_size - 4);
+  cpu.stop_address = cpu.code_base + static_cast<std::uint32_t>(mapped.image.size_of_image);
+  cpu.stop_address_enabled = true;
+  if (!cpu.write32(cpu.regs[4], cpu.stop_address))
     return fail("could not initialize synthetic return address");
 
   if (!cpu.run(instruction_budget))
