@@ -11,9 +11,10 @@
 - Reject any non-empty section raw-data range that exceeds the input file.
 - Translate RVAs to file offsets only when the complete requested range is backed by header or section bytes in the file; reject unmapped RVAs and zero-filled virtual tails.
 - Extract import, TLS, and delay-import directory RVA/size pairs, validating that the declared directory count fits inside the optional header.
+- Walk the bounded import descriptor table and extract DLL module names, requiring a null descriptor terminator and file-backed, terminated ASCII names.
 
 ## Explicit non-goals
-This parser does not yet load or map an image, apply relocations, validate every PE semantic constraint, walk import descriptors/thunks or TLS callbacks, inspect load-config directories, or execute the file. A syntactically parseable PE is not necessarily loadable or safe to execute.
+This parser does not yet load or map an image, apply relocations, validate every PE semantic constraint, resolve imported symbols/thunks, inspect TLS callbacks or load-config directories, or execute the file. A syntactically parseable PE is not necessarily loadable or safe to execute.
 
 ## Error contract
 Invalid or truncated input returns a structured failure and a diagnostic string. Parsing must not read outside the supplied byte vector. The CLI exits 0 on successful parsing, 1 on invalid/unsupported PE, and 2 on command-line or file-open errors.
