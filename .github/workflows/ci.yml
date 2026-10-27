@@ -25,10 +25,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install build tools
+      - name: Verify preinstalled build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++
+          cmake --version
+          ninja --version
+          g++ --version
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -75,10 +76,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install host build tools
+      - name: Verify preinstalled host build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build
+          cmake --version
+          ninja --version
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
