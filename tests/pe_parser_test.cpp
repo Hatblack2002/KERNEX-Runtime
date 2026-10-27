@@ -13,7 +13,7 @@ static void put32(std::vector<std::uint8_t>& b, std::size_t o, std::uint32_t v) 
   for (unsigned i = 0; i < 4; ++i) b.at(o + i) = static_cast<std::uint8_t>(v >> (8 * i));
 }
 static std::vector<std::uint8_t> make_pe32() {
-  std::vector<std::uint8_t> b(0x200, 0);
+  std::vector<std::uint8_t> b(0x400, 0);
   put16(b, 0, 0x5a4d);
   put32(b, 0x3c, 0x80);
   put32(b, 0x80, 0x00004550);
