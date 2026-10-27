@@ -12,7 +12,7 @@ enum class Op : std::uint8_t {
   call_rel32, jmp_rel32, jmp_rel8, jcc_rel8,
   mov_rm32_r32, mov_r32_rm32, add_rm32_r32, add_r32_rm32,
   sub_rm32_r32, sub_r32_rm32, xor_rm32_r32, xor_r32_rm32,
-  cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32, test_r32_rm32,
+  cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32,
   add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32
 };
 
