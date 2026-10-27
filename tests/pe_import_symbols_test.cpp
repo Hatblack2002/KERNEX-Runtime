@@ -57,7 +57,7 @@ int main() {
 
   put32(bytes, 0x250, 0x1060);
   put32(bytes, 0x254, 0x1060); // no null thunk before the bounded section ends
-  auto malformed = kernex::pe::read_import_symbols(bytes, parsed.image, 256, 4);
+  auto malformed = kernex::pe::read_import_symbols(bytes, parsed.image, 256, 1);
   if (malformed.ok) { std::cerr << "unterminated thunk table accepted\n"; return 5; }
   std::cout << "PE import symbol tests passed\n";
   return 0;
