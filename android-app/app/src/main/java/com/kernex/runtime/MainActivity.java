@@ -16,10 +16,12 @@ import java.io.InputStream;
 public final class MainActivity extends Activity {
     private static final int PICK_PE = 42;
     private TextView status;
+    private byte[] selectedBytes;
 
     static { System.loadLibrary("kernex_android"); }
     private native String nativeStatus();
     private native String inspectPe(byte[] fileBytes);
+    private native String runPe32(byte[] fileBytes);
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -44,6 +46,16 @@ public final class MainActivity extends Activity {
             startActivityForResult(intent, PICK_PE);
         });
         layout.addView(pick, new LinearLayout.LayoutParams(-1, -2));
+        Button run = new Button(this);
+        run.setText("Try limited PE32 execution");
+        run.setOnClickListener(v -> {
+            if (selectedBytes == null) {
+                status.setText("Select a PE file first.");
+            } else {
+                status.setText(runPe32(selectedBytes));
+            }
+        });
+        layout.addView(run, new LinearLayout.LayoutParams(-1, -2));
         status = new TextView(this);
         status.setText(nativeStatus());
         status.setTextIsSelectable(true);
@@ -67,7 +79,8 @@ public final class MainActivity extends Activity {
                 if (output.size() + count > 256 * 1024 * 1024) throw new IllegalArgumentException("File exceeds 256 MiB safety limit");
                 output.write(buffer, 0, count);
             }
-            status.setText(inspectPe(output.toByteArray()));
+            selectedBytes = output.toByteArray();
+            status.setText(inspectPe(selectedBytes));
         } catch (Exception e) {
             status.setText("Could not inspect file: " + e.getMessage());
         }
