@@ -32,6 +32,8 @@ inline ExecutionResult execute_mapped_pe32(const pe::LoadResult& mapped,
     return fail("PE image must be mapped successfully before execution");
   if (mapped.image.is_pe32_plus)
     return fail("x86-32 interpreter cannot execute PE32+ images");
+  if (mapped.image.machine != 0x014c)
+    return fail("x86-32 interpreter requires IMAGE_FILE_MACHINE_I386");
   if (mapped.image.entry_point == 0 || mapped.image.entry_point >= mapped.memory.size())
     return fail("PE32 entry point is zero or outside mapped image");
   if (stack_size < 4 || stack_size > UINT32_MAX - mapped.memory.size())
