@@ -145,6 +145,8 @@ inline bool apply_base_relocations(LoadResult& loaded, std::uint64_t actual_base
     if (block_size < 8 || (block_size & 1u) != 0 ||
         block_size > directory_end - cursor)
       return fail("invalid base relocation block size");
+    if ((page_rva & 0x0fffu) != 0 || page_rva >= image.size_of_image)
+      return fail("invalid base relocation page RVA");
 
     for (std::uint64_t entry = cursor + 8; entry < cursor + block_size; entry += 2) {
       std::uint16_t item{};
