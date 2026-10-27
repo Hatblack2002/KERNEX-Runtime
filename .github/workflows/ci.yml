@@ -50,10 +50,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install build tools
+      - name: Verify preinstalled build tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++
+          cmake --version
+          ninja --version
+          g++ --version
       - name: Configure with AddressSanitizer and UndefinedBehaviorSanitizer
         run: >
           cmake -S . -B build-sanitized -G Ninja
