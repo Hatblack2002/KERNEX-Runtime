@@ -87,6 +87,12 @@ int main() {
   if (!near_branch.step() || near_branch.eip != 7) return 22;
   if (!near_branch.step() || near_branch.eip != 8) return 23;
 
+  kernex::x86::Cpu32 test_flags(64);
+  test_flags.code = {0xb8,0x0c,0,0,0, 0xb9,0x0a,0,0,0, 0x85,0xc8};
+  if (!test_flags.step() || !test_flags.step() || !test_flags.step()) return 24;
+  if (test_flags.regs[0] != 12 || test_flags.regs[1] != 10 ||
+      (test_flags.eflags & 0x40u) != 0) return 25;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
