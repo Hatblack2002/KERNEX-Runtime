@@ -1,6 +1,6 @@
 # Initial hypotheses and evidence policy
 
-**Status: parser, import metadata reader, bounded PE image mapper with PE32 HIGHLOW / PE32+ DIR64 relocation support, limited decoder, and limited interpreter exist.** CI currently exercises Linux x86-64, Linux ARM64, and ASan/UBSan stress tests. Passing these tests does not establish Android NDK integration or Windows application compatibility.
+**Status: parser, import metadata reader and callback-driven IAT binder, bounded PE image mapper with PE32 HIGHLOW / PE32+ DIR64 relocation support, limited decoder, and limited interpreter exist.** CI currently exercises Linux x86-64, Linux ARM64, and ASan/UBSan stress tests. Passing these tests does not establish Android NDK integration or Windows application compatibility.
 
 ## H0 — Declared x86-32 subset
 A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
@@ -24,16 +24,23 @@ A validated PE file can be mapped into an image-layout byte buffer without readi
 - Implemented behavior: bounded image allocation, header copy, section raw-data copy to virtual addresses, zero-filled virtual tails, rejection of out-of-range entry points, invalid section spans, and overlapping section ranges; validated PE32 HIGHLOW and PE32+ DIR64 relocation application when rebasing.
 - Experiment: synthetic PE fixture tests plus ASan/UBSan and cross-architecture CI.
 - Pass condition: all valid-fixture mapping assertions pass and malformed ranges are rejected.
-- Does not prove: complete relocation-type coverage, import binding, TLS initialization, section permission enforcement, or successful execution of a Windows program.
+- Does not prove: complete relocation-type coverage, a production Windows API/module resolver, TLS initialization, section permission enforcement, or successful execution of a Windows program.
 
-## H3 — Differential instruction testing
+## H3 — Explicit import binding
+A host-provided resolver can populate a mapped image's IAT without partial writes when a symbol cannot be resolved.
+
+- Implemented behavior: named and ordinal imports retain IAT RVAs; the binder validates slots and PE32 address width and commits changes only if every symbol resolves.
+- Experiment: synthetic import table, successful binding, and resolver-failure atomicity tests under x86-64, ARM64, and ASan/UBSan.
+- Does not prove: Windows API semantics, module loading, forwarded exports, delay-load handling, or successful program startup.
+
+## H4 — Differential instruction testing
 A reference interpreter and a dynamic translator can be tested against independent x86 hardware-derived vectors for a declared instruction subset.
 
 - Experiment: create a vector generator on x86 and compare defined architectural state fields across implementations.
 - Pass condition: zero unexplained differences for the supported subset.
 - Caveat: undefined or implementation-dependent results must be masked and documented, not guessed.
 
-## H4 — Demand-driven compatibility
+## H5 — Demand-driven compatibility
 Static PE import analysis plus runtime instrumentation can identify a useful initial subset of compatibility APIs.
 
 - Experiment: compare import analysis with instrumented API and COM-vtable traces on legally analyzable test programs.
