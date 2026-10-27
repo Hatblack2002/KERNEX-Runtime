@@ -84,6 +84,15 @@ int main() {
     ok &= check(parsed.image.image_base == 0x00400000, "image base parsed");
     ok &= check(parsed.image.sections.size() == 1, "one section parsed");
     ok &= check(parsed.image.sections[0].name == ".text", "section name parsed");
+    std::size_t file_offset = 0;
+    ok &= check(kernex::pe::rva_to_file_offset(parsed.image, bytes.size(), 0x1000, 4, file_offset) &&
+                file_offset == 0x200, "section RVA maps to raw file offset");
+    ok &= check(kernex::pe::rva_to_file_offset(parsed.image, bytes.size(), 0x1f0, 8, file_offset) &&
+                file_offset == 0x1f0, "header RVA maps directly");
+    ok &= check(!kernex::pe::rva_to_file_offset(parsed.image, bytes.size(), 0x11ff, 2, file_offset),
+                "RVA range extending past raw section data rejected");
+    ok &= check(!kernex::pe::rva_to_file_offset(parsed.image, bytes.size(), 0x3000, 1, file_offset),
+                "unmapped RVA rejected");
   }
   auto plus_bytes = make_pe32_plus();
   auto plus = kernex::pe::parse(plus_bytes);
@@ -98,6 +107,9 @@ int main() {
   auto bad_sig = bytes;
   put32(bad_sig, 0x80, 0);
   ok &= check(!kernex::pe::parse(bad_sig).ok, "bad signature rejected");
+  auto bad_offset = bytes;
+  put32(bad_offset, 0x3c, 0xfffffff0u);
+  ok &= check(!kernex::pe::parse(bad_offset).ok, "overflowing PE header offset rejected");
   auto bad_section = bytes;
   put32(bad_section, 0x178 + 20, 0xfffffff0u);
   ok &= check(!kernex::pe::parse(bad_section).ok, "out-of-bounds section rejected");
