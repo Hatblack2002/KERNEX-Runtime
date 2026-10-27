@@ -28,6 +28,32 @@ Java_com_kernex_runtime_MainActivity_nativeStatus(JNIEnv* env, jobject) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_kernex_runtime_MainActivity_runPe32(JNIEnv* env, jobject, jbyteArray input) {
+  if (input == nullptr) return to_java(env, "No file data received.");
+  try {
+    const auto bytes = copy_bytes(env, input);
+    const auto parsed = kernex::pe::parse(bytes);
+    if (!parsed.ok) return to_java(env, std::string("Cannot execute invalid PE: ") + parsed.error);
+    if (parsed.image.is_pe32_plus || parsed.image.machine != 0x014c)
+      return to_java(env, "Execution refused: this experimental interpreter only accepts x86 PE32.");
+    if (parsed.image.import_directory_rva != 0 || parsed.image.import_directory_size != 0)
+      return to_java(env, "Execution refused: imported DLL/API calls are not emulated. Use a PE32 file with no imports.");
+    auto mapped = kernex::pe::load_image(bytes);
+    if (!mapped.ok) return to_java(env, std::string("PE mapping failed: ") + mapped.error);
+    const auto execution = kernex::runtime::execute_mapped_pe32(mapped);
+    if (!execution.ok) return to_java(env, std::string("Execution stopped safely: ") + execution.error);
+    std::ostringstream out;
+    out << "Subset execution returned successfully.\nExit code (EAX): " << execution.exit_code
+        << "\nThis result applies only to the implemented instruction subset; it is not evidence of general Windows compatibility.";
+    return to_java(env, out.str());
+  } catch (const std::exception& e) {
+    return to_java(env, std::string("Execution failed safely: ") + e.what());
+  } catch (...) {
+    return to_java(env, "Execution failed with an unknown native error.");
+  }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_kernex_runtime_MainActivity_inspectPe(JNIEnv* env, jobject, jbyteArray input) {
   if (input == nullptr) return to_java(env, "No file data received.");
   try {
