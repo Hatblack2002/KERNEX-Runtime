@@ -30,10 +30,13 @@ static std::vector<std::uint8_t> fixture() {
   put32(b, 0x214, 0x1040); put32(b, 0x218, 0x1070);
   const char dll[] = "KERNEL32.dll";
   for (std::size_t i = 0; i < sizeof(dll); ++i) b[0x240 + i] = dll[i];
-  put32(b, 0x250, 0x1060); put32(b, 0x254, 0);
+  put32(b, 0x250, 0x1060); put32(b, 0x254, 0x1080); put32(b, 0x258, 0);
   put16(b, 0x260, 7);
   const char fn[] = "Sleep";
   for (std::size_t i = 0; i < sizeof(fn); ++i) b[0x262 + i] = fn[i];
+  put16(b, 0x280, 0);
+  const char fn2[] = "GetTickCount";
+  for (std::size_t i = 0; i < sizeof(fn2); ++i) b[0x282 + i] = fn2[i];
   return b;
 }
 int main() {
@@ -41,14 +44,14 @@ int main() {
   auto parsed = kernex::pe::parse(bytes);
   if (!parsed.ok) { std::cerr << parsed.error << "\n"; return 1; }
   auto symbols = kernex::pe::read_import_symbols(bytes, parsed.image);
-  if (!symbols.ok || symbols.symbols.size() != 1) {
+  if (!symbols.ok || symbols.symbols.size() != 2) {
     std::cerr << "named import parse failed: " << symbols.error << "\n"; return 2;
   }
   const auto& named = symbols.symbols[0];
   if (named.module != "KERNEL32.dll" || named.name != "Sleep" ||
-      named.hint != 7 || named.by_ordinal) return 3;
+      named.hint != 7 || named.by_ordinal ||\n      symbols.symbols[1].name != "GetTickCount") return 3;
 
-  if (named.iat_rva != 0x1070) {
+  if (named.iat_rva != 0x1070 || symbols.symbols[1].iat_rva != 0x1074) {
     std::cerr << "IAT destination RVA was not retained\\n"; return 6;
   }
   auto mapped = kernex::pe::load_image(bytes);
