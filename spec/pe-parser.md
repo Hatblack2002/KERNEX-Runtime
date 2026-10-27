@@ -9,6 +9,7 @@
 - Extract machine, section count, characteristics, entry-point RVA, image base, alignments, image/header sizes, and section metadata.
 - Validate optional-header and section-table bounds.
 - Reject any non-empty section raw-data range that exceeds the input file.
+- Translate RVAs to file offsets only when the complete requested range is backed by header or section bytes in the file; reject unmapped RVAs and zero-filled virtual tails.
 
 ## Explicit non-goals
 This parser does not yet load or map an image, apply relocations, validate every PE semantic constraint, inspect imports/delay imports/TLS/load-config directories, or execute the file. A syntactically parseable PE is not necessarily loadable or safe to execute.
