@@ -4,7 +4,7 @@ KERNEX is a research project exploring a native Android ARM64 runtime for select
 
 ## Current status
 
-**Early research scaffold.** A bounds-checked PE header/section parser and the `peinfo` inspection utility have been added, with synthetic parser tests. CI execution has not yet been confirmed. No PE loader, x86 interpreter, dynamic binary translator, Windows API compatibility layer, or graphics translator is implemented.
+**Early research scaffold.** A bounds-checked PE header/section parser and the `peinfo` inspection utility have been added, with synthetic parser tests. CI execution has not yet been confirmed. No PE loader, dynamic binary translator, Windows API compatibility layer, or graphics translator is implemented. A deliberately limited x86-32 decoder and interpreter baseline now exists; it is not yet a complete or application-compatible runtime.
 
 ## Current milestone
 
