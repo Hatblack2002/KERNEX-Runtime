@@ -117,6 +117,30 @@ int main() {
   truncated_group.code = {0x83,0xc0};
   if (truncated_group.step() || truncated_group.error.empty()) return 29;
 
+  // INC/DEC preserve carry; FF /2, /4, /6 indirect control flow and stack operations.
+  kernex::x86::Cpu32 incdec(256);
+  incdec.code = {0xb8,0xff,0xff,0xff,0xff,0xf8,0x40,0x48}; // mov eax,-1; clc; inc eax; dec eax
+  // Set CF explicitly in the fixture to verify INC/DEC do not alter it.
+  incdec.eflags |= 1u;
+  if (!incdec.step() || !incdec.step() || !incdec.step() || incdec.regs[0] != 0 ||
+      (incdec.eflags & 1u) == 0) return 30;
+  if (!incdec.step() || incdec.regs[0] != 0xffffffffu || (incdec.eflags & 1u) == 0) return 31;
+
+  kernex::x86::Cpu32 indirect(256);
+  indirect.code = {
+    0xb8,0x14,0,0,0,        // mov eax,20 (target NOP/RET sequence)
+    0xff,0xd0,              // call eax
+    0xb9,0x2a,0,0,0,        // mov ecx,42 after return
+    0xeb,0x05,              // jump to stop after subroutine
+    0x90,0xc3,               // target at 15: nop; ret
+    0x90,0x90,0x90,0x90,0x90,0x90,0x90
+  };
+  indirect.code[1] = 15; // target offset 15
+  indirect.regs[4] = 256;
+  indirect.stop_address = 20;
+  indirect.stop_address_enabled = true;
+  if (!indirect.run(32) || indirect.regs[1] != 42) return 32;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
