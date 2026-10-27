@@ -92,4 +92,96 @@ inline LoadResult load_image(const std::vector<std::uint8_t>& file,
   return result;
 }
 
+
+ 
+// Apply PE32 HIGHLOW or PE32+ DIR64 base relocations to a successfully mapped image.
+// A relocated copy is committed only after the entire relocation directory validates.
+inline bool apply_base_relocations(LoadResult& loaded, std::uint64_t actual_base,
+                                   std::string* error = nullptr) {
+  auto fail = [&](const char* message) {
+    if (error) *error = message;
+    return false;
+  };
+  if (!loaded.ok || loaded.memory.size() != loaded.image.size_of_image)
+    return fail("image must be successfully mapped before relocation");
+
+  const auto& image = loaded.image;
+  if (actual_base == image.image_base) {
+    if (error) error->clear();
+    return true;
+  }
+  if (image.is_pe32_plus) {
+    if (actual_base > UINT64_MAX - image.size_of_image)
+      return fail("actual image address range overflows 64-bit address space");
+  } else {
+    if (actual_base > UINT32_MAX ||
+        image.size_of_image > (std::uint64_t{1} << 32) - actual_base)
+      return fail("actual image address range exceeds PE32 address space");
+  }
+
+  const std::uint32_t directory_rva = image.base_relocation_directory_rva;
+  const std::uint32_t directory_size = image.base_relocation_directory_size;
+  if (directory_rva == 0 || directory_size == 0)
+    return fail("image has no base relocation directory for requested base");
+
+  std::vector<std::uint8_t> relocated = loaded.memory;
+  if (!range_ok(relocated.size(), directory_rva, directory_size))
+    return fail("base relocation directory exceeds mapped image");
+
+  const std::uint32_t expected_type = image.is_pe32_plus ? 10u : 3u;
+  const std::uint64_t delta = actual_base - image.image_base;
+  std::uint64_t cursor = directory_rva;
+  const std::uint64_t directory_end = cursor + directory_size;
+  if (directory_end > relocated.size())
+    return fail("base relocation directory end exceeds mapped image");
+
+  while (cursor < directory_end) {
+    if (directory_end - cursor < 8)
+      return fail("truncated base relocation block header");
+    std::uint32_t page_rva{}, block_size{};
+    if (!read_u32(relocated, static_cast<std::size_t>(cursor), page_rva) ||
+        !read_u32(relocated, static_cast<std::size_t>(cursor + 4), block_size))
+      return fail("unreadable base relocation block header");
+    if (block_size < 8 || (block_size & 1u) != 0 ||
+        block_size > directory_end - cursor)
+      return fail("invalid base relocation block size");
+
+    for (std::uint64_t entry = cursor + 8; entry < cursor + block_size; entry += 2) {
+      std::uint16_t item{};
+      if (!read_u16(relocated, static_cast<std::size_t>(entry), item))
+        return fail("truncated base relocation entry");
+      const std::uint32_t type = item >> 12;
+      if (type == 0) continue;
+      if (type != expected_type)
+        return fail("unsupported or bitness-incompatible base relocation type");
+      const std::uint64_t target = static_cast<std::uint64_t>(page_rva) + (item & 0x0fffu);
+      const std::uint64_t width = image.is_pe32_plus ? 8u : 4u;
+      if (!range_ok(relocated.size(), target, width))
+        return fail("base relocation target exceeds mapped image");
+      if (image.is_pe32_plus) {
+        std::uint64_t value{};
+        if (!read_u64(relocated, static_cast<std::size_t>(target), value))
+          return fail("unreadable DIR64 relocation target");
+        value += delta;
+        for (unsigned i = 0; i < 8; ++i)
+          relocated[static_cast<std::size_t>(target) + i] =
+              static_cast<std::uint8_t>(value >> (i * 8));
+      } else {
+        std::uint32_t value{};
+        if (!read_u32(relocated, static_cast<std::size_t>(target), value))
+          return fail("unreadable HIGHLOW relocation target");
+        value += static_cast<std::uint32_t>(delta);
+        for (unsigned i = 0; i < 4; ++i)
+          relocated[static_cast<std::size_t>(target) + i] =
+              static_cast<std::uint8_t>(value >> (i * 8));
+      }
+    }
+    cursor += block_size;
+  }
+
+  loaded.memory.swap(relocated);
+  if (error) error->clear();
+  return true;
+}
+
 } // namespace kernex::pe
