@@ -98,6 +98,18 @@ struct Cpu32 {
     if (((a ^ b) & (a ^ value) & 0x80000000u) != 0) eflags |= 0x800;
   }
 
+  void set_inc_flags(std::uint32_t before, std::uint32_t after) {
+    const std::uint32_t carry = eflags & 0x1u;
+    set_add_flags(before, 1u, after);
+    eflags = (eflags & ~0x1u) | carry; // INC preserves CF.
+  }
+
+  void set_dec_flags(std::uint32_t before, std::uint32_t after) {
+    const std::uint32_t carry = eflags & 0x1u;
+    set_sub_flags(before, 1u, after);
+    eflags = (eflags & ~0x1u) | carry; // DEC preserves CF.
+  }
+
   bool condition(std::uint8_t cc) const {
     const bool cf = (eflags & 0x001) != 0;
     const bool pf = (eflags & 0x004) != 0;
@@ -141,6 +153,14 @@ struct Cpu32 {
         regs[5] = value; regs[4] = new_sp; eip = next; return true;
       }
       case Op::mov_reg_imm32: regs[ins.reg] = ins.immediate; eip = next; return true;
+      case Op::inc_reg: {
+        const std::uint32_t before = regs[ins.reg], after = before + 1u;
+        regs[ins.reg] = after; set_inc_flags(before, after); eip = next; return true;
+      }
+      case Op::dec_reg: {
+        const std::uint32_t before = regs[ins.reg], after = before - 1u;
+        regs[ins.reg] = after; set_dec_flags(before, after); eip = next; return true;
+      }
       case Op::push_reg: {
         if (regs[4] < 4) { error = "stack underflow"; return false; }
         const std::uint32_t sp = regs[4] - 4;
@@ -155,6 +175,23 @@ struct Cpu32 {
         if (ins.reg == 4) regs[4] = value;
         else { regs[ins.reg] = value; regs[4] += 4; }
         eip = next; return true;
+      }
+      case Op::push_rm32: {
+        std::uint32_t value{};
+        if (!read_operand(ins, value)) { error = "PUSH source outside memory"; return false; }
+        if (regs[4] < 4) { error = "stack underflow"; return false; }
+        const std::uint32_t sp = regs[4] - 4;
+        if (!write32(sp, value)) { error = "stack write outside memory"; return false; }
+        regs[4] = sp; eip = next; return true;
+      }
+      case Op::call_rm32: case Op::jmp_rm32: {
+        std::uint32_t target{};
+        if (!read_operand(ins, target)) { error = "indirect branch target outside memory"; return false; }
+        if (ins.op == Op::jmp_rm32) { eip = target; return true; }
+        if (regs[4] < 4) { error = "stack underflow"; return false; }
+        const std::uint32_t sp = regs[4] - 4;
+        if (!write32(sp, next)) { error = "stack write outside memory"; return false; }
+        regs[4] = sp; eip = target; return true;
       }
       case Op::call_rel32: {
         if (regs[4] < 4) { error = "stack underflow"; return false; }
