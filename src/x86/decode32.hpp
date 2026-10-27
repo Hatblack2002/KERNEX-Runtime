@@ -12,9 +12,9 @@ enum class Op : std::uint8_t {
   call_rel32, jmp_rel32, jmp_rel8, jcc_rel8,
   mov_rm32_r32, mov_r32_rm32, add_rm32_r32, add_r32_rm32,
   sub_rm32_r32, sub_r32_rm32, xor_rm32_r32, xor_r32_rm32,
-  cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32,
+  cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32, and_rm32_r32, and_r32_rm32, or_rm32_r32, or_r32_rm32, lea_r32_m,
   add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32,
-  add_rm32_imm, sub_rm32_imm, cmp_rm32_imm, mov_rm32_imm,
+  add_rm32_imm, sub_rm32_imm, cmp_rm32_imm, mov_rm32_imm, and_rm32_imm, or_rm32_imm, xor_rm32_imm,
   inc_reg, dec_reg, call_rm32, jmp_rm32, push_rm32
 };
 
@@ -86,7 +86,7 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   }
   // Common 32-bit integer operations. Decode ModRM/SIB and signed
   // displacement without reading beyond the provided instruction window.
-  if (op == 0x89 || op == 0x8b || op == 0x01 || op == 0x03 ||
+  if (op == 0x89 || op == 0x8b || op == 0x8d || op == 0x01 || op == 0x03 || op == 0x09 || op == 0x0b || op == 0x21 || op == 0x23 ||
       op == 0x29 || op == 0x2b || op == 0x31 || op == 0x33 ||
       op == 0x39 || op == 0x3b || op == 0x85 || op == 0x81 || op == 0x83 || op == 0xc7 || op == 0xff) {
     if (size < 2) { out.error = "truncated ModRM instruction"; return out; }
@@ -150,7 +150,10 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
     if (op == 0x81 || op == 0x83) {
       switch (out.reg) {
         case 0: out.op = Op::add_rm32_imm; break;
+        case 1: out.op = Op::or_rm32_imm; break;
+        case 4: out.op = Op::and_rm32_imm; break;
         case 5: out.op = Op::sub_rm32_imm; break;
+        case 6: out.op = Op::xor_rm32_imm; break;
         case 7: out.op = Op::cmp_rm32_imm; break;
         default: out.error = "unsupported arithmetic immediate group extension"; out.op = Op::invalid; break;
       }
@@ -173,6 +176,11 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
     switch (op) {
       case 0x89: out.op = Op::mov_rm32_r32; break;
       case 0x8b: out.op = Op::mov_r32_rm32; break;
+      case 0x8d: if (out.memory_operand) out.op = Op::lea_r32_m; else { out.op = Op::invalid; out.error = "LEA requires a memory addressing form"; } break;
+      case 0x09: out.op = Op::or_rm32_r32; break;
+      case 0x0b: out.op = Op::or_r32_rm32; break;
+      case 0x21: out.op = Op::and_rm32_r32; break;
+      case 0x23: out.op = Op::and_r32_rm32; break;
       case 0x01: out.op = Op::add_rm32_r32; break;
       case 0x03: out.op = Op::add_r32_rm32; break;
       case 0x29: out.op = Op::sub_rm32_r32; break;
