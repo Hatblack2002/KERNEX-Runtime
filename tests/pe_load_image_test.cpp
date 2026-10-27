@@ -59,6 +59,12 @@ static std::vector<std::uint8_t> make_pe64() {
   put16(b, 0x308, 0xa010); put16(b, 0x30a, 0);
   return b;
 }
+static std::uint32_t next_random(std::uint32_t& state) {
+  state ^= state << 13;
+  state ^= state >> 17;
+  state ^= state << 5;
+  return state;
+}
 static bool check(bool condition, const char* message) {
   if (!condition) std::cerr << "FAIL: " << message << "\n";
   return condition;
@@ -129,6 +135,34 @@ int main() {
   put32(overlap, second + 8, 0x100); put32(overlap, second + 12, 0x1100);
   put32(overlap, second + 16, 0x100); put32(overlap, second + 20, 0x300);
   ok &= check(!kernex::pe::load_image(overlap).ok, "overlapping virtual sections rejected");
-  if (ok) std::cout << "PE image mapping tests passed\n";
+  // Deterministic mutation and random-input stress with a strict allocation cap.
+  std::uint32_t state = 0x4b45524eu;
+  for (std::size_t iteration = 0; iteration < 10000; ++iteration) {
+    auto candidate = file;
+    const unsigned mutations = 1 + next_random(state) % 8;
+    for (unsigned i = 0; i < mutations; ++i) {
+      const std::size_t at = next_random(state) % candidate.size();
+      candidate[at] = static_cast<std::uint8_t>(next_random(state));
+    }
+    auto mapped = kernex::pe::load_image(candidate, 0x4000);
+    if (mapped.ok) {
+      if (mapped.memory.size() != mapped.image.size_of_image) {
+        std::cerr << "mapped image size invariant failed at mutation " << iteration << "\\n";
+        return 10;
+      }
+      const std::uint64_t base = mapped.image.is_pe32_plus ? 0x180000000ull : 0x500000ull;
+      (void)kernex::pe::apply_base_relocations(mapped, base);
+    }
+  }
+  for (std::size_t iteration = 0; iteration < 5000; ++iteration) {
+    std::vector<std::uint8_t> random_file(next_random(state) % 1025);
+    for (auto& byte : random_file) byte = static_cast<std::uint8_t>(next_random(state));
+    const auto mapped = kernex::pe::load_image(random_file, 0x4000);
+    if (mapped.ok && mapped.memory.size() != mapped.image.size_of_image) {
+      std::cerr << "random image size invariant failed at input " << iteration << "\\n";
+      return 11;
+    }
+  }
+  if (ok) std::cout << "PE image mapping tests passed (15000 stress inputs)\\n";
   return ok ? 0 : 1;
 }
