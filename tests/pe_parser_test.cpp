@@ -1,4 +1,5 @@
 #include "pe/pe_image.hpp"
+#include "pe/imports.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -122,6 +123,26 @@ int main() {
     ok &= check(dirs.image.delay_import_directory_rva == 0x1020 && dirs.image.delay_import_directory_size == 64,
                 "delay-import directory extracted");
   }
+  auto imports_fixture = with_imports;
+  // One IMAGE_IMPORT_DESCRIPTOR at RVA 0x1008; the second descriptor is null.
+  put32(imports_fixture, 0x208 + 12, 0x1040);
+  const char dll_name[] = "KERNEL32.dll";
+  for (std::size_t i = 0; i < sizeof(dll_name); ++i)
+    imports_fixture[0x240 + i] = static_cast<std::uint8_t>(dll_name[i]);
+  auto import_image = kernex::pe::parse(imports_fixture);
+  ok &= check(import_image.ok, "import module fixture parses");
+  if (import_image.ok) {
+    auto modules = kernex::pe::read_import_modules(imports_fixture, import_image.image);
+    ok &= check(modules.ok, "import module name reader succeeds");
+    ok &= check(modules.modules.size() == 1 && modules.modules[0] == "KERNEL32.dll",
+                "import DLL name extracted");
+    auto broken_imports = imports_fixture;
+    put32(broken_imports, 0x208 + 12, 0xfffffff0u);
+    auto broken_image = kernex::pe::parse(broken_imports);
+    auto broken_modules = kernex::pe::read_import_modules(broken_imports, broken_image.image);
+    ok &= check(!broken_modules.ok, "out-of-range import name rejected");
+  }
+
   auto impossible_directory_count = bytes;
   put32(impossible_directory_count, 0x98 + 92, 0xffffffffu);
   ok &= check(!kernex::pe::parse(impossible_directory_count).ok,
