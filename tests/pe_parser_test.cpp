@@ -104,6 +104,29 @@ int main() {
   }
   std::vector<std::uint8_t> empty;
   ok &= check(!kernex::pe::parse(empty).ok, "empty input rejected");
+  auto with_imports = bytes;
+  put32(with_imports, 0x98 + 92, 16); // PE32 NumberOfRvaAndSizes
+  put32(with_imports, 0x98 + 96 + 8, 0x1010); // TLS directory RVA (index 9)
+  put32(with_imports, 0x98 + 96 + 12, 24);
+  put32(with_imports, 0x98 + 96 + 13 * 8, 0x1020); // delay-import directory
+  put32(with_imports, 0x98 + 96 + 13 * 8 + 4, 64);
+  put32(with_imports, 0x98 + 96 + 8, 0x1008); // import directory RVA (index 1)
+  put32(with_imports, 0x98 + 96 + 12, 40);
+  auto dirs = kernex::pe::parse(with_imports);
+  ok &= check(dirs.ok, "data-directory metadata parses");
+  if (dirs.ok) {
+    ok &= check(dirs.image.import_directory_rva == 0x1008 && dirs.image.import_directory_size == 40,
+                "import directory extracted");
+    ok &= check(dirs.image.tls_directory_rva == 0x1010 && dirs.image.tls_directory_size == 24,
+                "TLS directory extracted");
+    ok &= check(dirs.image.delay_import_directory_rva == 0x1020 && dirs.image.delay_import_directory_size == 64,
+                "delay-import directory extracted");
+  }
+  auto impossible_directory_count = bytes;
+  put32(impossible_directory_count, 0x98 + 92, 0xffffffffu);
+  ok &= check(!kernex::pe::parse(impossible_directory_count).ok,
+              "data-directory count beyond optional header rejected");
+
   auto bad_sig = bytes;
   put32(bad_sig, 0x80, 0);
   ok &= check(!kernex::pe::parse(bad_sig).ok, "bad signature rejected");
