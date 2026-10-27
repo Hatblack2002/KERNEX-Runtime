@@ -103,7 +103,9 @@ struct Cpu32 {
 
   bool run(std::size_t instruction_budget = 100000) {
     for (std::size_t i = 0; i < instruction_budget; ++i) {
-      if (halted || eip >= code.size()) return error.empty();
+      if (halted) return error.empty();
+      if (eip == code.size()) return error.empty();
+      if (eip > code.size()) { error = "instruction pointer outside code"; return false; }
       if (!step()) return false;
     }
     error = "instruction budget exhausted";
