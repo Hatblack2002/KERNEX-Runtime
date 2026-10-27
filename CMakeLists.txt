@@ -23,4 +23,8 @@ if(BUILD_TESTING)
   add_executable(kernex_pe_parser_test tests/pe_parser_test.cpp)
   target_link_libraries(kernex_pe_parser_test PRIVATE kernex_common)
   add_test(NAME pe_parser COMMAND kernex_pe_parser_test)
+
+  add_executable(kernex_x86_decode_test tests/x86_decode_test.cpp)
+  target_link_libraries(kernex_x86_decode_test PRIVATE kernex_common)
+  add_test(NAME x86_decode COMMAND kernex_x86_decode_test)
 endif()
