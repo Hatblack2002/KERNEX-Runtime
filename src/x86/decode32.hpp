@@ -13,7 +13,7 @@ enum class Op : std::uint8_t {
   mov_rm32_r32, mov_r32_rm32, add_rm32_r32, add_r32_rm32,
   sub_rm32_r32, sub_r32_rm32, xor_rm32_r32, xor_r32_rm32,
   cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32, test_r32_rm32,
-  add_eax_imm32, sub_eax_imm32, cmp_eax_imm32
+  add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32
 };
 
 struct Instruction {
@@ -45,6 +45,13 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   if (op == 0xc3) { out.op = Op::ret; out.length = 1; return out; }
   if (op == 0xcc) { out.op = Op::int3; out.length = 1; return out; }
   if (op == 0xc9) { out.op = Op::leave; out.length = 1; return out; }
+  if (op == 0x6a) {
+    if (size < 2) { out.error = "truncated push imm8"; return out; }
+    out.op = Op::push_imm8; out.length = 2;
+    const std::int32_t value = bytes[1] < 0x80 ? bytes[1] : static_cast<std::int32_t>(bytes[1]) - 256;
+    out.immediate = static_cast<std::uint32_t>(value);
+    return out;
+  }
   if (op == 0x68) {
     if (size < 5) { out.error = "truncated push imm32"; return out; }
     out.op = Op::push_imm32; out.length = 5;
@@ -136,6 +143,21 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
       (static_cast<std::uint32_t>(bytes[2]) << 8) |
       (static_cast<std::uint32_t>(bytes[3]) << 16) |
       (static_cast<std::uint32_t>(bytes[4]) << 24);
+    return out;
+  }
+  if (op == 0x0f) {
+    if (size < 2) { out.error = "truncated two-byte opcode"; return out; }
+    if (bytes[1] >= 0x80 && bytes[1] <= 0x8f) {
+      if (size < 6) { out.error = "truncated near conditional branch"; return out; }
+      const std::uint32_t raw = static_cast<std::uint32_t>(bytes[2]) |
+        (static_cast<std::uint32_t>(bytes[3]) << 8) |
+        (static_cast<std::uint32_t>(bytes[4]) << 16) |
+        (static_cast<std::uint32_t>(bytes[5]) << 24);
+      out.op = Op::jcc_rel32; out.condition = bytes[1] & 0x0f;
+      out.displacement = static_cast<std::int32_t>(raw); out.length = 6;
+      return out;
+    }
+    out.error = "unsupported two-byte x86 opcode";
     return out;
   }
   if (op == 0xe8 || op == 0xe9) {
