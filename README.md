@@ -17,6 +17,7 @@ The image mapper copies headers and file-backed section bytes into a zero-initia
 - Extract bounded PE import DLL names and metadata for import, TLS, and delay-import directories.
 - Map PE headers and section data into a bounded, zero-filled image-layout buffer.
 - Apply validated PE32 HIGHLOW and PE32+ DIR64 base relocations when the image is rebased.
+- Bind import address table slots transactionally through an explicit host-provided symbol resolver.
 - Decode and interpret a deliberately limited x86-32 instruction subset, including register-immediate MOV, NOP, INT3, PUSH/POP, LEAVE, RET, relative CALL/JMP, and short conditional branches.
 - Exercise malformed PE files, truncation, decoder opcode space, deterministic mutations, and memory/control-flow boundaries in CI.
 - Keep hypotheses and experimental results explicitly separate.
