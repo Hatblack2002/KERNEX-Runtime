@@ -19,9 +19,9 @@ The image mapper copies headers and file-backed section bytes into a zero-initia
 - Map PE headers and section data into a bounded, zero-filled image-layout buffer.
 - Apply validated PE32 HIGHLOW and PE32+ DIR64 base relocations when the image is rebased.
 - Prepare a mapped image through a single pipeline: map, optionally relocate, and transactionally bind regular import address table slots through an explicit caller-provided symbol resolver.
-- Decode and interpret a deliberately limited x86-32 instruction subset, including register-immediate MOV, NOP, INT3, PUSH/POP (including the architectural POP ESP special case), LEAVE, RET, relative CALL/JMP, and short conditional branches. This remains a small instruction subset and does not yet implement general ModRM/SIB addressing or Windows API compatibility.
+- Decode and interpret a deliberately limited x86-32 instruction subset, including register-immediate MOV, ModRM/SIB-based 32-bit MOV and ALU operations, absolute and base/index/displacement memory operands, accumulator ADD/SUB/CMP immediates, basic arithmetic flags, NOP, INT3, PUSH/POP (including the architectural POP ESP special case), LEAVE, RET, relative CALL/JMP, and short conditional branches. Unsupported instructions fail closed; this is not a complete x86 decoder and does not provide full Windows API compatibility.
 - Execute mapped PE32 entrypoints with guest virtual addresses, a bounded image-plus-stack address window, a synthetic return sentinel, and an instruction budget; falling off the code buffer is an error, not successful termination. This is a test harness, not general Windows process startup.
-- Exercise malformed PE files, truncation, decoder opcode space, deterministic mutations, and memory/control-flow boundaries in CI.
+- Exercise malformed PE files, truncation, decoder opcode space, deterministic mutations, memory/control-flow boundaries, ALU flags, ModRM/SIB addressing, and 20,000 bounded deterministic random interpreter programs in CI.
 - Keep hypotheses and experimental results explicitly separate.
 
 ## Build locally
