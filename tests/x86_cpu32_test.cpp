@@ -48,6 +48,33 @@ int main() {
   bad_va.code_base = 0x00400000u;
   bad_va.eip = 0x003fffffu;
   if (bad_va.step() || bad_va.error.empty()) return 16;
+  // ModRM register arithmetic, absolute disp32 memory operands, and flags.
+  kernex::x86::Cpu32 alu(256);
+  alu.code = {
+    0xb8,5,0,0,0,             // mov eax,5
+    0xb9,7,0,0,0,             // mov ecx,7
+    0x03,0xc1,                // add eax,ecx
+    0x2d,2,0,0,0,             // sub eax,2 => 10
+    0x89,0x05,0x20,0,0,0,     // mov [0x20],eax
+    0x8b,0x15,0x20,0,0,0,     // mov edx,[0x20]
+    0x3d,10,0,0,0,            // cmp eax,10 => ZF
+    0x74,0x02,                // jz over failure instruction
+    0xcc,                     // int3 must be skipped
+    0x90
+  };
+  if (!alu.run(32) || alu.regs[0] != 10 || alu.regs[2] != 10 ||
+      (alu.eflags & 0x40u) == 0) return 17;
+  std::uint32_t stored{};
+  if (!alu.read32(0x20, stored) || stored != 10) return 18;
+
+  // SIB addressing: mov [eax+ecx*4+8], edx; then read it back.
+  kernex::x86::Cpu32 sib(256);
+  sib.code = {0xb8,0x20,0,0,0, 0xb9,2,0,0,0, 0xba,0x78,0x56,0x34,0x12,
+              0x89,0x54,0x88,0x08, 0x8b,0x7c,0x88,0x08};
+  sib.regs[4] = 256;
+  if (!sib.step() || !sib.step() || !sib.step() || !sib.step() || !sib.step()) return 19;
+  if (sib.regs[7] != 0x12345678u) return 20;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
