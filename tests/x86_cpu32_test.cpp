@@ -140,6 +140,23 @@ int main() {
   indirect.stop_address_enabled = true;
   if (!indirect.run(32) || indirect.regs[1] != 42) return 32;
 
+  // LEA computes a SIB effective address without dereferencing it; bitwise
+  // register and immediate operations update result and arithmetic flags.
+  kernex::x86::Cpu32 bitwise(256);
+  bitwise.code = {
+    0xb8,0x20,0,0,0,             // mov eax,0x20
+    0xb9,3,0,0,0,                // mov ecx,3
+    0x8d,0x54,0x88,0x08,         // lea edx,[eax+ecx*4+8] => 0x34
+    0xbb,0xf0,0,0,0,             // mov ebx,0xf0
+    0x21,0xc3,                   // and ebx,eax => 0x20
+    0x09,0xcb,                   // or ebx,ecx => 0x23
+    0x83,0xf3,0x03               // xor ebx,3 => 0x20
+  };
+  bitwise.stop_address = static_cast<std::uint32_t>(bitwise.code.size());
+  bitwise.stop_address_enabled = true;
+  if (!bitwise.run(32) || bitwise.regs[2] != 0x34 || bitwise.regs[3] != 0x20 ||
+      (bitwise.eflags & 0x40u) != 0) return 33;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
