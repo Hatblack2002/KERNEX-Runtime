@@ -1,4 +1,5 @@
 #include "pe/load_image.hpp"
+#include "runtime/execute_pe32.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -73,6 +74,22 @@ int main() {
   bool ok = true;
   const auto file = make_pe32();
   const auto loaded = kernex::pe::load_image(file);
+  auto executable_file = file;
+  executable_file[0x200] = 0xb8; // MOV EAX, 42
+  executable_file[0x201] = 42;
+  executable_file[0x202] = 0;
+  executable_file[0x203] = 0;
+  executable_file[0x204] = 0;
+  executable_file[0x205] = 0xc3; // RET to the harness sentinel
+  const auto executable_image = kernex::pe::load_image(executable_file);
+  const auto executed = kernex::runtime::execute_mapped_pe32(executable_image);
+  ok &= check(executed.ok && executed.exit_code == 42,
+              "mapped PE32 entrypoint executes through x86-32 interpreter");
+  const auto budget_exhausted = kernex::runtime::execute_mapped_pe32(executable_image, 4096, 1);
+  ok &= check(!budget_exhausted.ok, "PE32 execution instruction budget enforced");
+  auto mapped64_for_execution = kernex::pe::load_image(make_pe64());
+  ok &= check(!kernex::runtime::execute_mapped_pe32(mapped64_for_execution).ok,
+              "PE32 interpreter rejects PE32+ image");
   ok &= check(loaded.ok, "valid PE32 image maps");
   if (loaded.ok) {
     ok &= check(loaded.memory.size() == 0x3000, "mapped buffer matches SizeOfImage");
