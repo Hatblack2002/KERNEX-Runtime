@@ -115,6 +115,11 @@ int main() {
     ok &= check(kernex::pe::read_u64(loaded64.memory, 0x1010, relocated64) &&
                 relocated64 == 0x180001234ull,
                 "DIR64 relocation applies 64-bit base delta");
+    const auto once_relocated64 = loaded64.memory;
+    ok &= check(kernex::pe::apply_base_relocations(loaded64, 0x180000000ull),
+                "reapplying same PE32+ base succeeds");
+    ok &= check(loaded64.memory == once_relocated64,
+                "PE32+ repeated base application is idempotent");
     auto wrong_type = kernex::pe::load_image(file64);
     put16(wrong_type.memory, 0x1108, 0x3010);
     const auto before_wrong_type = wrong_type.memory;
@@ -134,6 +139,18 @@ int main() {
       ok &= check(kernex::pe::read_u32(relocated.memory, 0x1010, relocated_value) &&
                   relocated_value == 0x00501234,
                   "HIGHLOW relocation applies base delta");
+      const auto once_relocated = relocated.memory;
+      ok &= check(kernex::pe::apply_base_relocations(relocated, 0x500000, &relocation_error),
+                  "reapplying same relocation base succeeds");
+      ok &= check(relocated.memory == once_relocated,
+                  "reapplying same base does not double-relocate pointers");
+      ok &= check(relocated.loaded_base == 0x500000,
+                  "current loaded base is tracked");
+      ok &= check(kernex::pe::apply_base_relocations(relocated, 0x400000, &relocation_error),
+                  "relocating image back to preferred base succeeds");
+      ok &= check(kernex::pe::read_u32(relocated.memory, 0x1010, relocated_value) &&
+                  relocated_value == 0x00401234 && relocated.loaded_base == 0x400000,
+                  "reverse relocation restores preferred pointer and base");
     }
     auto malformed = loaded;
     put32(malformed.memory, 0x1104, 7);
