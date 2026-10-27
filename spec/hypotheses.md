@@ -1,6 +1,6 @@
 # Initial hypotheses and evidence policy
 
-**Status: parser, import metadata reader, bounded PE image mapper, limited decoder, and limited interpreter exist.** CI currently exercises Linux x86-64, Linux ARM64, and ASan/UBSan stress tests. Passing these tests does not establish Android NDK integration or Windows application compatibility.
+**Status: parser, import metadata reader, bounded PE image mapper with PE32 HIGHLOW / PE32+ DIR64 relocation support, limited decoder, and limited interpreter exist.** CI currently exercises Linux x86-64, Linux ARM64, and ASan/UBSan stress tests. Passing these tests does not establish Android NDK integration or Windows application compatibility.
 
 ## H0 — Declared x86-32 subset
 A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
@@ -21,10 +21,10 @@ The same C++17 baseline can build and pass its test suite on x86-64 and ARM64 CI
 ## H2 — Bounded PE image mapping
 A validated PE file can be mapped into an image-layout byte buffer without reading or writing outside the input file or declared image bounds.
 
-- Implemented behavior: bounded image allocation, header copy, section raw-data copy to virtual addresses, zero-filled virtual tails, rejection of out-of-range entry points, invalid section spans, and overlapping section ranges.
+- Implemented behavior: bounded image allocation, header copy, section raw-data copy to virtual addresses, zero-filled virtual tails, rejection of out-of-range entry points, invalid section spans, and overlapping section ranges; validated PE32 HIGHLOW and PE32+ DIR64 relocation application when rebasing.
 - Experiment: synthetic PE fixture tests plus ASan/UBSan and cross-architecture CI.
 - Pass condition: all valid-fixture mapping assertions pass and malformed ranges are rejected.
-- Does not prove: relocations, import binding, TLS initialization, section permission enforcement, or successful execution of a Windows program.
+- Does not prove: complete relocation-type coverage, import binding, TLS initialization, section permission enforcement, or successful execution of a Windows program.
 
 ## H3 — Differential instruction testing
 A reference interpreter and a dynamic translator can be tested against independent x86 hardware-derived vectors for a declared instruction subset.
