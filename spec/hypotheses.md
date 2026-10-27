@@ -5,7 +5,7 @@
 ## H0 — Declared x86-32 subset
 A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
 
-- Implemented subset: NOP, INT3 trap, register-immediate MOV, PUSH immediate/register, POP register, LEAVE, RET, relative CALL/JMP, and short conditional branches.
+- Implemented subset: NOP, INT3 trap, register-immediate MOV, PUSH immediate/register, POP register (including POP ESP semantics), LEAVE, RET, relative CALL/JMP, and short conditional branches.
 - Implemented integration: a synthetic PE32 image is mapped and its entry point runs through the x86-32 interpreter with a synthetic return sentinel, separate stack, and instruction budget.
 - Experiment: run deterministic state-transition and mapped-entrypoint tests on x86-64 and ARM64 hosts, including ASan/UBSan.
 - Pass condition: build and tests pass on both architectures; invalid instructions and out-of-range memory/control flow fail deterministically.
@@ -22,7 +22,7 @@ The same C++17 baseline can build and pass its test suite on x86-64 and ARM64 CI
 ## H2 — Bounded PE image mapping
 A validated PE file can be mapped into an image-layout byte buffer without reading or writing outside the input file or declared image bounds.
 
-- Implemented behavior: bounded image allocation, header copy, section raw-data copy to virtual addresses, zero-filled virtual tails, rejection of out-of-range entry points, invalid section spans, and overlapping section ranges; validated PE32 HIGHLOW and PE32+ DIR64 relocation application when rebasing.
+- Implemented behavior: bounded image allocation, header copy, section raw-data copy to virtual addresses, zero-filled virtual tails, rejection of out-of-range entry points, invalid section spans, and overlapping section ranges; validated PE32 HIGHLOW and PE32+ DIR64 relocation application when rebasing. The current loaded base is tracked, same-base relocation is idempotent, and rebasing back to the preferred base is covered by regression tests.
 - Experiment: synthetic PE fixture tests plus ASan/UBSan and cross-architecture CI.
 - Pass condition: all valid-fixture mapping assertions pass and malformed ranges are rejected.
 - Does not prove: complete relocation-type coverage, a production Windows API/module resolver, TLS initialization, section permission enforcement, or successful execution of a Windows program.
