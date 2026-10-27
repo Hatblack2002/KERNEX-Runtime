@@ -76,7 +76,11 @@ int main() {
   auto unchanged = kernex::pe::load_image(bytes);
   const auto before_binding = unchanged.memory;
   auto unresolved = kernex::pe::bind_imports(unchanged, bytes,
-      [](const kernex::pe::ImportSymbol&, std::uint64_t&) { return false; });
+      [](const kernex::pe::ImportSymbol& symbol, std::uint64_t& address) {
+        if (symbol.name != "Sleep") return false;
+        address = 0x76543210u;
+        return true;
+      });
   if (unresolved.ok || unchanged.memory != before_binding) {
     std::cerr << "failed import binding modified mapped image\\n"; return 9;
   }
