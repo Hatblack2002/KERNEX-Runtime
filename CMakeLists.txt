@@ -31,4 +31,8 @@ if(BUILD_TESTING)
   add_executable(kernex_x86_cpu32_test tests/x86_cpu32_test.cpp)
   target_link_libraries(kernex_x86_cpu32_test PRIVATE kernex_common)
   add_test(NAME x86_cpu32 COMMAND kernex_x86_cpu32_test)
+
+  add_executable(kernex_pe_import_symbols_test tests/pe_import_symbols_test.cpp)
+  target_link_libraries(kernex_pe_import_symbols_test PRIVATE kernex_common)
+  add_test(NAME pe_import_symbols COMMAND kernex_pe_import_symbols_test)
 endif()
