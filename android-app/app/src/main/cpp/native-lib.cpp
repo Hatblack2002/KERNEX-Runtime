@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <cstdint>
+#include <exception>
 #include <sstream>
 #include <string>
 #include <vector>
