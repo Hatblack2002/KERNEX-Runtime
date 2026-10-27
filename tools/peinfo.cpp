@@ -56,6 +56,11 @@ int main(int argc, char** argv) {
             << "  \"file_alignment\": " << p.file_alignment << ",\n"
             << "  \"size_of_image\": " << p.size_of_image << ",\n"
             << "  \"size_of_headers\": " << p.size_of_headers << ",\n"
+            << "  \"directories\": {\n"
+            << "    \"imports\": {\"rva\": " << p.import_directory_rva << ", \"size\": " << p.import_directory_size << "},\n"
+            << "    \"tls\": {\"rva\": " << p.tls_directory_rva << ", \"size\": " << p.tls_directory_size << "},\n"
+            << "    \"delay_imports\": {\"rva\": " << p.delay_import_directory_rva << ", \"size\": " << p.delay_import_directory_size << "}\n"
+            << "  },\n"
             << "  \"sections\": [";
   for (std::size_t i = 0; i < p.sections.size(); ++i) {
     const auto& s = p.sections[i];
