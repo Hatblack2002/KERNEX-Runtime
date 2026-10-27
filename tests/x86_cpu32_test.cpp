@@ -62,6 +62,8 @@ int main() {
     0xcc,                     // int3 must be skipped
     0x90
   };
+  alu.stop_address = static_cast<std::uint32_t>(alu.code.size());
+  alu.stop_address_enabled = true;
   if (!alu.run(32) || alu.regs[0] != 10 || alu.regs[2] != 10 ||
       (alu.eflags & 0x40u) == 0) return 17;
   std::uint32_t stored{};
