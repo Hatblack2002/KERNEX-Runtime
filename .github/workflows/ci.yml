@@ -80,6 +80,8 @@ jobs:
           sudo apt-get install -y cmake ninja-build
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
       - name: Install Android NDK
         run: sdkmanager "ndk;27.2.12479018"
       - name: Configure Android ARM64 targets
