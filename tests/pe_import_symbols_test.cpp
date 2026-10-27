@@ -49,7 +49,8 @@ int main() {
   }
   const auto& named = symbols.symbols[0];
   if (named.module != "KERNEL32.dll" || named.name != "Sleep" ||
-      named.hint != 7 || named.by_ordinal ||\n      symbols.symbols[1].name != "GetTickCount") return 3;
+      named.hint != 7 || named.by_ordinal ||
+      symbols.symbols[1].name != "GetTickCount") return 3;
 
   if (named.iat_rva != 0x1070 || symbols.symbols[1].iat_rva != 0x1074) {
     std::cerr << "IAT destination RVA was not retained\\n"; return 6;
@@ -58,15 +59,18 @@ int main() {
   if (!mapped.ok) { std::cerr << "image mapping failed: " << mapped.error << "\\n"; return 7; }
   auto binding = kernex::pe::bind_imports(mapped, bytes,
       [](const kernex::pe::ImportSymbol& symbol, std::uint64_t& address) {
-        if (symbol.module != "KERNEL32.dll" || symbol.name != "Sleep" || symbol.by_ordinal)
-          return false;
-        address = 0x76543210u;
+        if (symbol.module != "KERNEL32.dll" || symbol.by_ordinal) return false;
+        if (symbol.name == "Sleep") address = 0x76543210u;
+        else if (symbol.name == "GetTickCount") address = 0x12345678u;
+        else return false;
         return true;
       });
-  std::uint32_t bound_address = 0;
-  if (!binding.ok || binding.bound_count != 1 ||
+  std::uint32_t bound_address = 0, second_bound_address = 0;
+  if (!binding.ok || binding.bound_count != 2 ||
       !kernex::pe::read_u32(mapped.memory, 0x1070, bound_address) ||
-      bound_address != 0x76543210u) {
+      bound_address != 0x76543210u ||
+      !kernex::pe::read_u32(mapped.memory, 0x1074, second_bound_address) ||
+      second_bound_address != 0x12345678u) {
     std::cerr << "IAT binding failed: " << binding.error << "\\n"; return 8;
   }
   auto unchanged = kernex::pe::load_image(bytes);
@@ -79,14 +83,18 @@ int main() {
 
   auto prepared = kernex::runtime::prepare_image(bytes,
       [](const kernex::pe::ImportSymbol& symbol, std::uint64_t& address) {
-        if (symbol.module != "KERNEL32.dll" || symbol.name != "Sleep") return false;
-        address = 0x76543210u;
+        if (symbol.module != "KERNEL32.dll") return false;
+        if (symbol.name == "Sleep") address = 0x76543210u;
+        else if (symbol.name == "GetTickCount") address = 0x12345678u;
+        else return false;
         return true;
       });
-  std::uint32_t prepared_address = 0;
+  std::uint32_t prepared_address = 0, prepared_second_address = 0;
   if (!prepared.ok ||
       !kernex::pe::read_u32(prepared.image.memory, 0x1070, prepared_address) ||
-      prepared_address != 0x76543210u) {
+      prepared_address != 0x76543210u ||
+      !kernex::pe::read_u32(prepared.image.memory, 0x1074, prepared_second_address) ||
+      prepared_second_address != 0x12345678u) {
     std::cerr << "combined image preparation failed: " << prepared.error << "\\n"; return 10;
   }
   auto failed_preparation = kernex::runtime::prepare_image(bytes,
