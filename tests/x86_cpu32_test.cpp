@@ -110,7 +110,7 @@ int main() {
   if (!immediates.read32(0x40, immediate_memory) || immediate_memory != 0x12345700u) { std::cerr << "immediate memory mismatch: " << std::hex << immediate_memory << "\\n"; return 27; }
 
   kernex::x86::Cpu32 bad_group(64);
-  bad_group.code = {0x81,0xc8,1,0,0,0}; // unsupported OR group extension
+  bad_group.code = {0x81,0xd0,1,0,0,0}; // unsupported ADC group extension
   if (bad_group.step() || bad_group.error.empty()) return 28;
   kernex::x86::Cpu32 truncated_group(64);
   truncated_group.code = {0x83,0xc0};
