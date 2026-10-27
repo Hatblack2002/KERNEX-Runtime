@@ -71,7 +71,7 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
 }
 
 inline Instruction decode32(const std::vector<std::uint8_t>& bytes, std::size_t offset = 0) {
-  if (offset > bytes.size()) {
+  if (offset >= bytes.size()) {
     Instruction out; out.error = "instruction offset outside buffer"; return out;
   }
   return decode32(bytes.data() + offset, bytes.size() - offset);
