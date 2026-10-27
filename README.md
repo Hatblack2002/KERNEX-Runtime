@@ -11,7 +11,8 @@ KERNEX is a research project exploring a native Android ARM64 runtime for select
 - Build the portable C++17 scaffold on x86-64 and ARM64 CI runners.
 - Emit a machine-readable build environment report.
 - Parse PE32 and PE32+ headers and section tables with bounds checks.
-- Reject truncated files and section data that extends beyond the input.
+- Translate file-backed RVAs safely for upcoming import and TLS analysis.
+- Reject truncated files, unmapped RVAs, and section data that extends beyond the input.
 - Keep hypotheses and experimental results explicitly separate.
 
 ## Build locally
