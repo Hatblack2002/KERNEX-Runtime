@@ -155,7 +155,12 @@ int main() {
   bitwise.stop_address = static_cast<std::uint32_t>(bitwise.code.size());
   bitwise.stop_address_enabled = true;
   if (!bitwise.run(32) || bitwise.regs[2] != 0x34 || bitwise.regs[3] != 0x20 ||
-      (bitwise.eflags & 0x40u) != 0) return 33;
+      (bitwise.eflags & 0x40u) != 0) {
+    std::cerr << "LEA/bitwise failed: error=" << bitwise.error << " edx=" << std::hex
+              << bitwise.regs[2] << " ebx=" << bitwise.regs[3] << " flags=" << bitwise.eflags
+              << " eip=" << bitwise.eip << "\n";
+    return 33;
+  }
 
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
