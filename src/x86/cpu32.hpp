@@ -14,6 +14,10 @@ struct Cpu32 {
   std::uint32_t regs[8]{};
   std::uint32_t eip{};
   std::uint32_t eflags{0x2};
+  std::uint32_t code_base{};
+  std::uint32_t memory_base{};
+  std::uint32_t stop_address{};
+  bool stop_address_enabled{};
   std::vector<std::uint8_t> code;
   std::vector<std::uint8_t> memory;
   bool halted{};
@@ -24,18 +28,24 @@ struct Cpu32 {
   }
 
   bool read32(std::uint32_t address, std::uint32_t& value) const {
-    if (address > memory.size() || 4 > memory.size() - address) return false;
-    value = static_cast<std::uint32_t>(memory[address]) |
-            (static_cast<std::uint32_t>(memory[address + 1]) << 8) |
-            (static_cast<std::uint32_t>(memory[address + 2]) << 16) |
-            (static_cast<std::uint32_t>(memory[address + 3]) << 24);
+    if (address < memory_base) return false;
+    const std::uint64_t rel = static_cast<std::uint64_t>(address) - memory_base;
+    if (rel > memory.size() || 4 > memory.size() - static_cast<std::size_t>(rel)) return false;
+    const std::size_t at = static_cast<std::size_t>(rel);
+    value = static_cast<std::uint32_t>(memory[at]) |
+            (static_cast<std::uint32_t>(memory[at + 1]) << 8) |
+            (static_cast<std::uint32_t>(memory[at + 2]) << 16) |
+            (static_cast<std::uint32_t>(memory[at + 3]) << 24);
     return true;
   }
 
   bool write32(std::uint32_t address, std::uint32_t value) {
-    if (address > memory.size() || 4 > memory.size() - address) return false;
+    if (address < memory_base) return false;
+    const std::uint64_t rel = static_cast<std::uint64_t>(address) - memory_base;
+    if (rel > memory.size() || 4 > memory.size() - static_cast<std::size_t>(rel)) return false;
+    const std::size_t at = static_cast<std::size_t>(rel);
     for (unsigned i = 0; i < 4; ++i)
-      memory[address + i] = static_cast<std::uint8_t>(value >> (i * 8));
+      memory[at + i] = static_cast<std::uint8_t>(value >> (i * 8));
     return true;
   }
 
@@ -60,15 +70,17 @@ struct Cpu32 {
 
   bool step() {
     if (halted) return false;
-    if (eip >= code.size()) { error = "instruction pointer outside code"; return false; }
-    const auto ins = decode32(code, eip);
+    if (eip < code_base) { error = "instruction pointer below code base"; return false; }
+    const std::uint64_t rel = static_cast<std::uint64_t>(eip) - code_base;
+    if (rel >= code.size()) { error = "instruction pointer outside code"; return false; }
+    const auto ins = decode32(code, static_cast<std::size_t>(rel));
     if (ins.op == Op::invalid) { error = ins.error; return false; }
     const std::uint32_t next = eip + ins.length;
     switch (ins.op) {
       case Op::nop: eip = next; return true;
       case Op::int3: error = "INT3 breakpoint"; halted = true; return false;
       case Op::push_imm32: {
-        if (regs[4] < 4) { error = "stack underflow"; return false; }
+        if (regs[4] < memory_base + 4u) { error = "stack underflow"; return false; }
         const std::uint32_t sp = regs[4] - 4;
         if (!write32(sp, ins.immediate)) { error = "stack write outside memory"; return false; }
         regs[4] = sp; eip = next; return true;
@@ -118,10 +130,14 @@ struct Cpu32 {
   }
 
   bool run(std::size_t instruction_budget = 100000) {
+    if (stop_address_enabled && eip == stop_address) return true;
     for (std::size_t i = 0; i < instruction_budget; ++i) {
-      if (halted) return error.empty();
-      if (eip == code.size()) return error.empty();
-      if (eip > code.size()) { error = "instruction pointer outside code"; return false; }
+      if (halted) { if (error.empty()) error = "CPU halted without explicit exit"; return false; }
+      if (stop_address_enabled && eip == stop_address) return true;
+      if (eip < code_base || static_cast<std::uint64_t>(eip) - code_base >= code.size()) {
+        error = "execution left code without reaching configured exit address";
+        return false;
+      }
       if (!step()) return false;
     }
     error = "instruction budget exhausted";
