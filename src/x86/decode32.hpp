@@ -13,7 +13,8 @@ enum class Op : std::uint8_t {
   mov_rm32_r32, mov_r32_rm32, add_rm32_r32, add_r32_rm32,
   sub_rm32_r32, sub_r32_rm32, xor_rm32_r32, xor_r32_rm32,
   cmp_rm32_r32, cmp_r32_rm32, test_rm32_r32,
-  add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32
+  add_eax_imm32, sub_eax_imm32, cmp_eax_imm32, push_imm8, jcc_rel32,
+  add_rm32_imm, sub_rm32_imm, cmp_rm32_imm, mov_rm32_imm
 };
 
 struct Instruction {
@@ -80,7 +81,7 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   // displacement without reading beyond the provided instruction window.
   if (op == 0x89 || op == 0x8b || op == 0x01 || op == 0x03 ||
       op == 0x29 || op == 0x2b || op == 0x31 || op == 0x33 ||
-      op == 0x39 || op == 0x3b || op == 0x85) {
+      op == 0x39 || op == 0x3b || op == 0x85 || op == 0x81 || op == 0x83 || op == 0xc7) {
     if (size < 2) { out.error = "truncated ModRM instruction"; return out; }
     const std::uint8_t m = bytes[1];
     out.mod = m >> 6; out.reg = (m >> 3) & 7; out.rm = m & 7;
@@ -119,7 +120,40 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
         (static_cast<std::uint32_t>(bytes[at+3]) << 24);
       out.displacement = static_cast<std::int32_t>(d); at += 4;
     }
+    if (op == 0x81 || op == 0x83 || op == 0xc7) {
+      const std::size_t immediate_size = op == 0x83 ? 1u : 4u;
+      if (size < at + immediate_size) {
+        out.error = "truncated group immediate";
+        return out;
+      }
+      if (op == 0x83) {
+        const std::int32_t signed_value = bytes[at] < 0x80
+            ? static_cast<std::int32_t>(bytes[at])
+            : static_cast<std::int32_t>(bytes[at]) - 256;
+        out.immediate = static_cast<std::uint32_t>(signed_value);
+      } else {
+        out.immediate = static_cast<std::uint32_t>(bytes[at]) |
+          (static_cast<std::uint32_t>(bytes[at+1]) << 8) |
+          (static_cast<std::uint32_t>(bytes[at+2]) << 16) |
+          (static_cast<std::uint32_t>(bytes[at+3]) << 24);
+      }
+      at += immediate_size;
+    }
     out.length = static_cast<std::uint8_t>(at);
+    if (op == 0x81 || op == 0x83) {
+      switch (out.reg) {
+        case 0: out.op = Op::add_rm32_imm; break;
+        case 5: out.op = Op::sub_rm32_imm; break;
+        case 7: out.op = Op::cmp_rm32_imm; break;
+        default: out.error = "unsupported arithmetic immediate group extension"; out.op = Op::invalid; break;
+      }
+      return out;
+    }
+    if (op == 0xc7) {
+      if (out.reg != 0) { out.error = "unsupported MOV immediate group extension"; return out; }
+      out.op = Op::mov_rm32_imm;
+      return out;
+    }
     switch (op) {
       case 0x89: out.op = Op::mov_rm32_r32; break;
       case 0x8b: out.op = Op::mov_r32_rm32; break;
