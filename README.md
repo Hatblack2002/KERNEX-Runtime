@@ -20,6 +20,7 @@ The image mapper copies headers and file-backed section bytes into a zero-initia
 - Apply validated PE32 HIGHLOW and PE32+ DIR64 base relocations when the image is rebased.
 - Bind import address table slots transactionally through an explicit host-provided symbol resolver.
 - Decode and interpret a deliberately limited x86-32 instruction subset, including register-immediate MOV, NOP, INT3, PUSH/POP, LEAVE, RET, relative CALL/JMP, and short conditional branches.
+- Execute synthetic mapped PE32 entrypoints through that subset with a separate bounded stack and instruction budget; this is a test harness, not general Windows process startup.
 - Exercise malformed PE files, truncation, decoder opcode space, deterministic mutations, and memory/control-flow boundaries in CI.
 - Keep hypotheses and experimental results explicitly separate.
 
