@@ -93,6 +93,30 @@ int main() {
   if (test_flags.regs[0] != 12 || test_flags.regs[1] != 10 ||
       (test_flags.eflags & 0x40u) != 0) return 25;
 
+  // Immediate groups: C7 /0, ADD/SUB/CMP r/m32,imm32 and sign-extended imm8.
+  kernex::x86::Cpu32 immediates(256);
+  immediates.code = {
+    0xb8,0x10,0,0,0,             // mov eax,16
+    0x83,0xc0,0xf8,              // add eax,-8 => 8
+    0x83,0xe8,0x03,              // sub eax,3 => 5
+    0x83,0xf8,0x05,              // cmp eax,5 => ZF
+    0xc7,0x05,0x40,0,0,0,0x78,0x56,0x34,0x12, // mov [0x40],0x12345678
+    0x81,0x05,0x40,0,0,0,0x88,0,0,0 // add [0x40],136
+  };
+  immediates.stop_address = static_cast<std::uint32_t>(immediates.code.size());
+  immediates.stop_address_enabled = true;
+  if (!immediates.run(32) || immediates.regs[0] != 5 ||
+      (immediates.eflags & 0x40u) == 0) return 26;
+  std::uint32_t immediate_memory{};
+  if (!immediates.read32(0x40, immediate_memory) || immediate_memory != 0x12345700u) return 27;
+
+  kernex::x86::Cpu32 bad_group(64);
+  bad_group.code = {0x81,0xc8,1,0,0,0}; // unsupported OR group extension
+  if (bad_group.step() || bad_group.error.empty()) return 28;
+  kernex::x86::Cpu32 truncated_group(64);
+  truncated_group.code = {0x83,0xc0};
+  if (truncated_group.step() || truncated_group.error.empty()) return 29;
+
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
