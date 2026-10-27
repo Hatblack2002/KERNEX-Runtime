@@ -12,8 +12,15 @@ target_include_directories(kernex_common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/s
 add_executable(kernex_envprobe src/common/envprobe.cpp)
 target_link_libraries(kernex_envprobe PRIVATE kernex_common)
 
+add_executable(kernex_peinfo tools/peinfo.cpp)
+target_link_libraries(kernex_peinfo PRIVATE kernex_common)
+
 if(BUILD_TESTING)
   add_executable(kernex_smoke_test tests/smoke.cpp)
   target_link_libraries(kernex_smoke_test PRIVATE kernex_common)
   add_test(NAME smoke COMMAND kernex_smoke_test)
+
+  add_executable(kernex_pe_parser_test tests/pe_parser_test.cpp)
+  target_link_libraries(kernex_pe_parser_test PRIVATE kernex_common)
+  add_test(NAME pe_parser COMMAND kernex_pe_parser_test)
 endif()
