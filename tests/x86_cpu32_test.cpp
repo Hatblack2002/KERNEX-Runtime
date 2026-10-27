@@ -119,10 +119,10 @@ int main() {
 
   // INC/DEC preserve carry; FF /2, /4, /6 indirect control flow and stack operations.
   kernex::x86::Cpu32 incdec(256);
-  incdec.code = {0xb8,0xff,0xff,0xff,0xff,0xf8,0x40,0x48}; // mov eax,-1; clc; inc eax; dec eax
+  incdec.code = {0xb8,0xff,0xff,0xff,0xff,0x40,0x48}; // mov eax,-1; inc eax; dec eax
   // Set CF explicitly in the fixture to verify INC/DEC do not alter it.
   incdec.eflags |= 1u;
-  if (!incdec.step() || !incdec.step() || !incdec.step() || incdec.regs[0] != 0 ||
+  if (!incdec.step() || !incdec.step() || incdec.regs[0] != 0 ||
       (incdec.eflags & 1u) == 0) return 30;
   if (!incdec.step() || incdec.regs[0] != 0xffffffffu || (incdec.eflags & 1u) == 0) return 31;
 
