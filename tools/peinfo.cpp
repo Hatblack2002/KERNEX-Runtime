@@ -6,6 +6,17 @@
 #include <iterator>
 #include <vector>
 
+static std::string safe_section_name(const std::string& name) {
+  std::string out;
+  out.reserve(name.size());
+  for (unsigned char c : name) {
+    // Keep the JSON report valid even for malformed/non-printable section names.
+    if (c >= 0x20 && c <= 0x7e && c != '"' && c != '\\\\') out.push_back(static_cast<char>(c));
+    else out.push_back('_');
+  }
+  return out;
+}
+
 static const char* machine_name(std::uint16_t machine) {
   switch (machine) {
     case 0x014c: return "x86";
