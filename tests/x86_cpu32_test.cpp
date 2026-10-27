@@ -29,6 +29,25 @@ int main() {
   kernex::x86::Cpu32 invalid(16);
   invalid.code = {0x0f};
   if (invalid.step() || invalid.error.empty()) return 7;
+  // Guest instruction pointers and stack pointers can be real 32-bit VAs.
+  kernex::x86::Cpu32 va_cpu(64);
+  va_cpu.code = {0xb8,0x2a,0,0,0,0xc3};
+  va_cpu.code_base = 0x00400000u;
+  va_cpu.memory_base = 0x00400000u;
+  va_cpu.eip = va_cpu.code_base;
+  va_cpu.regs[4] = va_cpu.memory_base + 60;
+  va_cpu.stop_address = va_cpu.code_base + static_cast<std::uint32_t>(va_cpu.code.size());
+  va_cpu.stop_address_enabled = true;
+  if (!va_cpu.write32(va_cpu.regs[4], va_cpu.stop_address)) return 13;
+  if (!va_cpu.run(8) || va_cpu.regs[0] != 42 || va_cpu.eip != va_cpu.stop_address) return 14;
+  kernex::x86::Cpu32 fallthrough(64);
+  fallthrough.code = {0x90};
+  if (fallthrough.run(4) || fallthrough.error.empty()) return 15;
+  kernex::x86::Cpu32 bad_va(64);
+  bad_va.code = {0x90};
+  bad_va.code_base = 0x00400000u;
+  bad_va.eip = 0x003fffffu;
+  if (bad_va.step() || bad_va.error.empty()) return 16;
   std::cout << "x86 interpreter baseline tests passed\n";
   return 0;
 }
