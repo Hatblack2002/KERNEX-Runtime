@@ -106,9 +106,9 @@ int main() {
   immediates.stop_address = static_cast<std::uint32_t>(immediates.code.size());
   immediates.stop_address_enabled = true;
   if (!immediates.run(32) || immediates.regs[0] != 5 ||
-      (immediates.eflags & 0x40u) == 0) return 26;
+      (immediates.eflags & 0x40u) == 0) { std::cerr << "immediate execution failed: " << immediates.error << " eax=" << immediates.regs[0] << " flags=" << immediates.eflags << " eip=" << immediates.eip << "\\n"; return 26; }
   std::uint32_t immediate_memory{};
-  if (!immediates.read32(0x40, immediate_memory) || immediate_memory != 0x12345700u) return 27;
+  if (!immediates.read32(0x40, immediate_memory) || immediate_memory != 0x12345700u) { std::cerr << "immediate memory mismatch: " << std::hex << immediate_memory << "\\n"; return 27; }
 
   kernex::x86::Cpu32 bad_group(64);
   bad_group.code = {0x81,0xc8,1,0,0,0}; // unsupported OR group extension
