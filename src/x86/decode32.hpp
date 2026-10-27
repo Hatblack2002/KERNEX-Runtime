@@ -73,7 +73,7 @@ inline Instruction decode32(const std::uint8_t* bytes, std::size_t size) {
   // displacement without reading beyond the provided instruction window.
   if (op == 0x89 || op == 0x8b || op == 0x01 || op == 0x03 ||
       op == 0x29 || op == 0x2b || op == 0x31 || op == 0x33 ||
-      op == 0x39 || op == 0x3b || op == 0x85 || op == 0x84) {
+      op == 0x39 || op == 0x3b || op == 0x85) {
     if (size < 2) { out.error = "truncated ModRM instruction"; return out; }
     const std::uint8_t m = bytes[1];
     out.mod = m >> 6; out.reg = (m >> 3) & 7; out.rm = m & 7;
