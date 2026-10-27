@@ -28,6 +28,10 @@ if(BUILD_TESTING)
   target_link_libraries(kernex_pe_parser_stress_test PRIVATE kernex_common)
   add_test(NAME pe_parser_stress COMMAND kernex_pe_parser_stress_test)
 
+  add_executable(kernex_pe_load_image_test tests/pe_load_image_test.cpp)
+  target_link_libraries(kernex_pe_load_image_test PRIVATE kernex_common)
+  add_test(NAME pe_load_image COMMAND kernex_pe_load_image_test)
+
   add_executable(kernex_x86_decode_test tests/x86_decode_test.cpp)
   target_link_libraries(kernex_x86_decode_test PRIVATE kernex_common)
   add_test(NAME x86_decode COMMAND kernex_x86_decode_test)
