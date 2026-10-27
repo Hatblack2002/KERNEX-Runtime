@@ -1,6 +1,14 @@
 # Initial hypotheses and evidence policy
 
-**Status: proposed; no runtime implementation or performance results exist yet.**
+**Status: initial parser, decoder, and interpreter source exists; CI execution and performance results remain unconfirmed.**
+
+## H0 — Declared x86-32 subset
+A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
+
+- Implemented subset: NOP, INT3 trap, register-immediate MOV, PUSH/POP register, RET, relative CALL/JMP, and short conditional branches.
+- Experiment: run deterministic state-transition tests on x86-64 and ARM64 hosts.
+- Pass condition: build and tests pass on both architectures; invalid instructions and out-of-range memory/control flow fail deterministically.
+- Does not prove: broad x86 compatibility, Windows API support, self-modifying code, exceptions, floating point, SIMD, or acceptable performance.
 
 ## H1 — Portable scaffold
 The same C++17 baseline can build and pass its smoke tests on x86-64 and ARM64 CI runners.
