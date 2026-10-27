@@ -31,6 +31,8 @@ struct ImageInfo {
   std::uint32_t size_of_headers{};
   std::uint32_t import_directory_rva{};
   std::uint32_t import_directory_size{};
+  std::uint32_t base_relocation_directory_rva{};
+  std::uint32_t base_relocation_directory_size{};
   std::uint32_t tls_directory_rva{};
   std::uint32_t tls_directory_size{};
   std::uint32_t delay_import_directory_rva{};
@@ -179,6 +181,7 @@ inline ParseResult parse(const std::vector<std::uint8_t>& b) {
     return read_u32(b, off, rva) && read_u32(b, off + 4, size);
   };
   if (!read_directory(1, image.import_directory_rva, image.import_directory_size) ||
+      !read_directory(5, image.base_relocation_directory_rva, image.base_relocation_directory_size) ||
       !read_directory(9, image.tls_directory_rva, image.tls_directory_size) ||
       !read_directory(13, image.delay_import_directory_rva, image.delay_import_directory_size))
     return fail("truncated data-directory entry");
