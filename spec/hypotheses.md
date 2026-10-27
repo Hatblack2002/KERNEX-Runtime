@@ -1,6 +1,6 @@
 # Initial hypotheses and evidence policy
 
-**Status: parser, import metadata reader and callback-driven IAT binder, bounded PE image mapper with PE32 HIGHLOW / PE32+ DIR64 relocation support, limited decoder, and limited interpreter exist.** CI currently exercises Linux x86-64, Linux ARM64, and ASan/UBSan stress tests. Passing these tests does not establish Android NDK integration or Windows application compatibility.
+**Status: parser, import metadata reader and callback-driven IAT binder, combined PE preparation pipeline, bounded PE image mapper with PE32 HIGHLOW / PE32+ DIR64 relocation support, limited decoder, and limited interpreter exist.** CI exercises Linux x86-64, Linux ARM64, Android NDK arm64-v8a cross-compilation, and ASan/UBSan stress tests. Passing these tests does not establish Android APK packaging, on-device execution, or Windows application compatibility.
 
 ## H0 — Declared x86-32 subset
 A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
@@ -30,8 +30,8 @@ A validated PE file can be mapped into an image-layout byte buffer without readi
 ## H3 — Explicit import binding
 A host-provided resolver can populate a mapped image's IAT without partial writes when a symbol cannot be resolved.
 
-- Implemented behavior: named and ordinal imports retain IAT RVAs; the binder validates slots and PE32 address width and commits changes only if every symbol resolves.
-- Experiment: synthetic import table, successful binding, and resolver-failure atomicity tests under x86-64, ARM64, and ASan/UBSan.
+- Implemented behavior: named and ordinal imports retain IAT RVAs; the binder validates slots and PE32 address width and commits changes only if every symbol resolves. `runtime::prepare_image` composes mapping, optional rebasing, and regular-import binding into one checked pipeline.
+- Experiment: synthetic import table, successful binding, resolver-failure atomicity, and combined preparation tests under x86-64, ARM64, and ASan/UBSan.
 - Does not prove: Windows API semantics, module loading, forwarded exports, delay-load handling, or successful program startup.
 
 ## H4 — Differential instruction testing
