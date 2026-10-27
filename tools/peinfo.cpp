@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
             << "  \"size_of_headers\": " << p.size_of_headers << ",\n"
             << "  \"directories\": {\n"
             << "    \"imports\": {\"rva\": " << p.import_directory_rva << ", \"size\": " << p.import_directory_size << "},\n"
+            << "    \"base_relocations\": {\"rva\": " << p.base_relocation_directory_rva << ", \"size\": " << p.base_relocation_directory_size << "},\n"
             << "    \"tls\": {\"rva\": " << p.tls_directory_rva << ", \"size\": " << p.tls_directory_size << "},\n"
             << "    \"delay_imports\": {\"rva\": " << p.delay_import_directory_rva << ", \"size\": " << p.delay_import_directory_size << "}\n"
             << "  },\n"
