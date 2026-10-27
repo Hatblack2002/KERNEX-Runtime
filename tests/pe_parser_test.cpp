@@ -106,8 +106,8 @@ int main() {
   ok &= check(!kernex::pe::parse(empty).ok, "empty input rejected");
   auto with_imports = bytes;
   put32(with_imports, 0x98 + 92, 16); // PE32 NumberOfRvaAndSizes
-  put32(with_imports, 0x98 + 96 + 8, 0x1010); // TLS directory RVA (index 9)
-  put32(with_imports, 0x98 + 96 + 12, 24);
+  put32(with_imports, 0x98 + 96 + 9 * 8, 0x1010); // TLS directory RVA (index 9)
+  put32(with_imports, 0x98 + 96 + 9 * 8 + 4, 24);
   put32(with_imports, 0x98 + 96 + 13 * 8, 0x1020); // delay-import directory
   put32(with_imports, 0x98 + 96 + 13 * 8 + 4, 64);
   put32(with_imports, 0x98 + 96 + 8, 0x1008); // import directory RVA (index 1)
