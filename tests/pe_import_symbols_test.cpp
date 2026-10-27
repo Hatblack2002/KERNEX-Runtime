@@ -1,4 +1,5 @@
 #include "pe/bind_imports.hpp"
+#include "runtime/prepare_image.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -71,6 +72,24 @@ int main() {
       [](const kernex::pe::ImportSymbol&, std::uint64_t&) { return false; });
   if (unresolved.ok || unchanged.memory != before_binding) {
     std::cerr << "failed import binding modified mapped image\\n"; return 9;
+  }
+
+  auto prepared = kernex::runtime::prepare_image(bytes,
+      [](const kernex::pe::ImportSymbol& symbol, std::uint64_t& address) {
+        if (symbol.module != "KERNEL32.dll" || symbol.name != "Sleep") return false;
+        address = 0x76543210u;
+        return true;
+      });
+  std::uint32_t prepared_address = 0;
+  if (!prepared.ok ||
+      !kernex::pe::read_u32(prepared.image.memory, 0x1070, prepared_address) ||
+      prepared_address != 0x76543210u) {
+    std::cerr << "combined image preparation failed: " << prepared.error << "\\n"; return 10;
+  }
+  auto failed_preparation = kernex::runtime::prepare_image(bytes,
+      [](const kernex::pe::ImportSymbol&, std::uint64_t&) { return false; });
+  if (failed_preparation.ok) {
+    std::cerr << "combined preparation accepted unresolved import\\n"; return 11;
   }
 
   put32(bytes, 0x250, 0x80000005u);
