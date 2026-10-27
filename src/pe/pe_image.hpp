@@ -29,6 +29,12 @@ struct ImageInfo {
   std::uint32_t file_alignment{};
   std::uint32_t size_of_image{};
   std::uint32_t size_of_headers{};
+  std::uint32_t import_directory_rva{};
+  std::uint32_t import_directory_size{};
+  std::uint32_t tls_directory_rva{};
+  std::uint32_t tls_directory_size{};
+  std::uint32_t delay_import_directory_rva{};
+  std::uint32_t delay_import_directory_size{};
   std::vector<Section> sections;
 };
 
@@ -153,6 +159,29 @@ inline ParseResult parse(const std::vector<std::uint8_t>& b) {
           return true;
         }();
   if (!base_ok) return fail("truncated image base");
+
+  // IMAGE_OPTIONAL_HEADER.NumberOfRvaAndSizes and DataDirectory follow different
+  // offsets in PE32 and PE32+. Only consume entries wholly present in this header.
+  const std::size_t directory_count_offset = static_cast<std::size_t>(optional) + (plus ? 108 : 92);
+  const std::size_t directory_table_offset = static_cast<std::size_t>(optional) + (plus ? 112 : 96);
+  std::uint32_t directory_count{};
+  if (!read_u32(b, directory_count_offset, directory_count))
+    return fail("truncated data-directory count");
+  const std::uint64_t available_directory_bytes =
+      static_cast<std::uint64_t>(optional_size) - (plus ? 112u : 96u);
+  const std::uint64_t available_directories = available_directory_bytes / 8;
+  if (directory_count > available_directories)
+    return fail("data-directory count exceeds optional-header bounds");
+
+  auto read_directory = [&](std::uint32_t index, std::uint32_t& rva, std::uint32_t& size) {
+    if (directory_count <= index) { rva = 0; size = 0; return true; }
+    const std::size_t off = directory_table_offset + static_cast<std::size_t>(index) * 8;
+    return read_u32(b, off, rva) && read_u32(b, off + 4, size);
+  };
+  if (!read_directory(1, image.import_directory_rva, image.import_directory_size) ||
+      !read_directory(9, image.tls_directory_rva, image.tls_directory_size) ||
+      !read_directory(13, image.delay_import_directory_rva, image.delay_import_directory_size))
+    return fail("truncated data-directory entry");
 
   const std::uint64_t section_table = optional + optional_size;
   const std::uint64_t section_bytes = static_cast<std::uint64_t>(section_count) * 40;
