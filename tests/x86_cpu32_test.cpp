@@ -8,6 +8,11 @@ int main() {
   if (!cpu.step() || cpu.regs[4] != 4092) return 2;
   if (!cpu.step() || cpu.regs[3] != 42 || cpu.regs[4] != 4096) return 3;
   if (!cpu.step() || cpu.eip != 8) return 4;
+  kernex::x86::Cpu32 pop_esp(64);
+  pop_esp.code = {0x5c}; // POP ESP
+  pop_esp.regs[4] = 16;
+  if (!pop_esp.write32(16, 0x12345678u)) return 11;
+  if (!pop_esp.step() || pop_esp.regs[4] != 0x12345678u) return 12;
   kernex::x86::Cpu32 branch(4096);
   branch.code = {0x75,0x02,0xb8,0x01,0,0,0,0xb8,0x2a,0,0,0};
   branch.eflags |= 0x40; // ZF=1, JNZ not taken
