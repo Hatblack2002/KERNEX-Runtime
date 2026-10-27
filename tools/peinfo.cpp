@@ -4,14 +4,15 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <string>
 #include <vector>
 
 static std::string safe_section_name(const std::string& name) {
   std::string out;
   out.reserve(name.size());
   for (unsigned char c : name) {
-    // Keep the JSON report valid even for malformed/non-printable section names.
-    if (c >= 0x20 && c <= 0x7e && c != '"' && c != '\\\\') out.push_back(static_cast<char>(c));
+    // Keep JSON valid even for malformed/non-printable section names.
+    if (c >= 0x20 && c <= 0x7e && c != '"' && c != '\\') out.push_back(static_cast<char>(c));
     else out.push_back('_');
   }
   return out;
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
   for (std::size_t i = 0; i < p.sections.size(); ++i) {
     const auto& s = p.sections[i];
     if (i) std::cout << ",";
-    std::cout << "\n    {\"name\": \"" << s.name
+    std::cout << "\n    {\"name\": \"" << safe_section_name(s.name)
               << "\", \"virtual_size\": " << s.virtual_size
               << ", \"virtual_address\": " << s.virtual_address
               << ", \"raw_size\": " << s.raw_size
