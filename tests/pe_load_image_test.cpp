@@ -34,6 +34,31 @@ static std::vector<std::uint8_t> make_pe32() {
   put16(b, 0x308, 0x3010); put16(b, 0x30a, 0);
   return b;
 }
+
+static std::vector<std::uint8_t> make_pe64() {
+  std::vector<std::uint8_t> b(0x400, 0);
+  put16(b, 0, 0x5a4d); put32(b, 0x3c, 0x80); put32(b, 0x80, 0x4550);
+  put16(b, 0x84, 0x8664); put16(b, 0x86, 1); put16(b, 0x94, 240);
+  const std::size_t o = 0x98;
+  put16(b, o, 0x20b); put32(b, o + 16, 0x1000);
+  put32(b, o + 24, 0x40000000); put32(b, o + 28, 1); // ImageBase 0x140000000
+  put32(b, o + 32, 0x1000); put32(b, o + 36, 0x200);
+  put32(b, o + 56, 0x3000); put32(b, o + 60, 0x200);
+  put32(b, o + 108, 16);
+  put32(b, o + 112 + 5 * 8, 0x1100);
+  put32(b, o + 112 + 5 * 8 + 4, 12);
+  const std::size_t s = o + 240;
+  b[s] = '.'; b[s + 1] = 't'; b[s + 2] = 'e'; b[s + 3] = 'x'; b[s + 4] = 't';
+  put32(b, s + 8, 0x180); put32(b, s + 12, 0x1000);
+  put32(b, s + 16, 0x200); put32(b, s + 20, 0x200);
+  put32(b, s + 36, 0x60000020);
+  for (std::size_t i = 0; i < 0x200; ++i) b[0x200 + i] = static_cast<std::uint8_t>(i & 0xff);
+  // A DIR64 relocation at RVA 0x1010; the block lives at RVA 0x1100.
+  put32(b, 0x210, 0x4001234); put32(b, 0x214, 1);
+  put32(b, 0x300, 0x1000); put32(b, 0x304, 12);
+  put16(b, 0x308, 0xa010); put16(b, 0x30a, 0);
+  return b;
+}
 static bool check(bool condition, const char* message) {
   if (!condition) std::cerr << "FAIL: " << message << "\n";
   return condition;
@@ -51,6 +76,18 @@ int main() {
                 loaded.memory[0x11ff] == file[0x3ff], "raw section copied to virtual address");
     ok &= check(loaded.memory[0x1200] == 0 && loaded.memory[0x117f] == file[0x37f],
                 "virtual tail remains zero-filled");
+  }
+  const auto file64 = make_pe64();
+  auto loaded64 = kernex::pe::load_image(file64);
+  ok &= check(loaded64.ok && loaded64.image.is_pe32_plus, "valid PE32+ image maps");
+  if (loaded64.ok) {
+    std::string error64;
+    ok &= check(kernex::pe::apply_base_relocations(loaded64, 0x180000000ull, &error64),
+                "PE32+ DIR64 base relocation succeeds");
+    std::uint64_t relocated64 = 0;
+    ok &= check(kernex::pe::read_u64(loaded64.memory, 0x1010, relocated64) &&
+                relocated64 == 0x180001234ull,
+                "DIR64 relocation applies 64-bit base delta");
   }
   ok &= check(!kernex::pe::load_image(file, 0x1000).ok, "image allocation limit enforced");
   if (loaded.ok) {
