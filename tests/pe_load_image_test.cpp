@@ -90,6 +90,10 @@ int main() {
   auto mapped64_for_execution = kernex::pe::load_image(make_pe64());
   ok &= check(!kernex::runtime::execute_mapped_pe32(mapped64_for_execution).ok,
               "PE32 interpreter rejects PE32+ image");
+  auto wrong_machine = executable_image;
+  wrong_machine.image.machine = 0x01c0; // IMAGE_FILE_MACHINE_ARM
+  ok &= check(!kernex::runtime::execute_mapped_pe32(wrong_machine).ok,
+              "x86-32 interpreter rejects non-I386 PE32 machine");
   ok &= check(loaded.ok, "valid PE32 image maps");
   if (loaded.ok) {
     ok &= check(loaded.memory.size() == 0x3000, "mapped buffer matches SizeOfImage");
