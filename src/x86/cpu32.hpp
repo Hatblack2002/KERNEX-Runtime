@@ -126,7 +126,7 @@ struct Cpu32 {
     switch (ins.op) {
       case Op::nop: eip = next; return true;
       case Op::int3: error = "INT3 breakpoint"; halted = true; return false;
-      case Op::push_imm32: {
+      case Op::push_imm32: case Op::push_imm8: {
         if (regs[4] < memory_base + 4u) { error = "stack underflow"; return false; }
         const std::uint32_t sp = regs[4] - 4;
         if (!write32(sp, ins.immediate)) { error = "stack write outside memory"; return false; }
@@ -162,7 +162,7 @@ struct Cpu32 {
       }
       case Op::jmp_rel32: case Op::jmp_rel8:
         eip = next + static_cast<std::uint32_t>(ins.displacement); return true;
-      case Op::jcc_rel8:
+      case Op::jcc_rel8: case Op::jcc_rel32:
         eip = condition(ins.condition) ? next + static_cast<std::uint32_t>(ins.displacement) : next;
         return true;
       case Op::ret: {
