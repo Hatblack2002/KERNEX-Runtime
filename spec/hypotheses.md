@@ -13,10 +13,10 @@ A small interpreter can execute a declared baseline of simple x86-32 instruction
 ## H1 — Portable scaffold
 The same C++17 baseline can build and pass its test suite on x86-64 and ARM64 CI runners.
 
-- Experiment: run the repository CI workflow on both architectures and run malformed-input tests under sanitizers.
+- Experiment: run the repository CI workflow on both architectures, cross-compile native targets with the Android NDK for arm64-v8a, and run malformed-input tests under sanitizers.
 - Pass condition: configure, build, and all registered tests succeed on both; ASan/UBSan reports no issue during the stress suite.
 - Evidence: see the successful GitHub Actions run linked from the repository's Actions tab.
-- Does not prove: Android NDK compatibility, DBT correctness, or performance.
+- Does not prove: Android APK packaging, on-device execution, DBT correctness, or performance.
 
 ## H2 — Bounded PE image mapping
 A validated PE file can be mapped into an image-layout byte buffer without reading or writing outside the input file or declared image bounds.
