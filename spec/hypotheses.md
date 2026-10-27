@@ -6,9 +6,10 @@
 A small interpreter can execute a declared baseline of simple x86-32 instructions with bounded memory access and deterministic failure for unsupported instructions.
 
 - Implemented subset: NOP, INT3 trap, register-immediate MOV, PUSH immediate/register, POP register, LEAVE, RET, relative CALL/JMP, and short conditional branches.
-- Experiment: run deterministic state-transition tests on x86-64 and ARM64 hosts.
+- Implemented integration: a synthetic PE32 image is mapped and its entry point runs through the x86-32 interpreter with a synthetic return sentinel, separate stack, and instruction budget.
+- Experiment: run deterministic state-transition and mapped-entrypoint tests on x86-64 and ARM64 hosts, including ASan/UBSan.
 - Pass condition: build and tests pass on both architectures; invalid instructions and out-of-range memory/control flow fail deterministically.
-- Does not prove: broad x86 compatibility, Windows API support, self-modifying code, exceptions, floating point, SIMD, or acceptable performance.
+- Does not prove: real Windows application startup, import/API dispatch, self-modifying code coherence, exceptions, floating point, SIMD, x86-64 execution, or acceptable performance.
 
 ## H1 — Portable scaffold
 The same C++17 baseline can build and pass its test suite on x86-64 and ARM64 CI runners.
