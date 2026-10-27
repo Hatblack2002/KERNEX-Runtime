@@ -18,8 +18,8 @@ struct LoadResult {
 };
 
 // Maps headers and section raw data into a zero-initialized image-layout buffer.
-// This is not a Windows loader: relocations, imports, TLS callbacks, permissions,
-// and execution are intentionally outside this first mapping primitive.
+// This is not a Windows loader: import binding, TLS callbacks, permissions, and
+// execution remain outside this mapping primitive.
 inline LoadResult load_image(const std::vector<std::uint8_t>& file,
                              std::size_t max_image_size = 256u * 1024u * 1024u) {
   LoadResult result;
