@@ -218,22 +218,32 @@ struct Cpu32 {
         if (!read_operand(ins, value)) { error = "MOV source outside memory"; return false; }
         regs[ins.reg] = value; eip = next; return true;
       }
+      case Op::lea_r32_m: {
+        std::uint32_t address{};
+        if (!effective_address(ins, address)) { error = "LEA effective address unavailable"; return false; }
+        regs[ins.reg] = address; eip = next; return true;
+      }
       case Op::mov_rm32_imm:
         if (!write_operand(ins, ins.immediate)) { error = "MOV immediate destination outside memory"; return false; }
         eip = next; return true;
-      case Op::add_rm32_imm: case Op::sub_rm32_imm: case Op::cmp_rm32_imm: {
+      case Op::add_rm32_imm: case Op::sub_rm32_imm: case Op::cmp_rm32_imm:
+      case Op::and_rm32_imm: case Op::or_rm32_imm: case Op::xor_rm32_imm: {
         std::uint32_t lhs{};
         if (!read_operand(ins, lhs)) { error = "arithmetic immediate source outside memory"; return false; }
         const std::uint32_t rhs = ins.immediate;
-        const std::uint32_t value = ins.op == Op::add_rm32_imm ? lhs + rhs : lhs - rhs;
-        if (ins.op == Op::add_rm32_imm) set_add_flags(lhs, rhs, value);
-        else set_sub_flags(lhs, rhs, value);
+        std::uint32_t value{};
+        if (ins.op == Op::add_rm32_imm) { value = lhs + rhs; set_add_flags(lhs, rhs, value); }
+        else if (ins.op == Op::sub_rm32_imm || ins.op == Op::cmp_rm32_imm) { value = lhs - rhs; set_sub_flags(lhs, rhs, value); }
+        else if (ins.op == Op::and_rm32_imm) { value = lhs & rhs; set_logic_flags(value); }
+        else if (ins.op == Op::or_rm32_imm) { value = lhs | rhs; set_logic_flags(value); }
+        else { value = lhs ^ rhs; set_logic_flags(value); }
         if (ins.op != Op::cmp_rm32_imm && !write_operand(ins, value)) {
           error = "arithmetic immediate destination outside memory"; return false;
         }
         eip = next; return true;
       }
       case Op::add_rm32_r32: case Op::sub_rm32_r32: case Op::xor_rm32_r32:
+      case Op::or_rm32_r32: case Op::and_rm32_r32:
       case Op::cmp_rm32_r32: case Op::test_rm32_r32: {
         std::uint32_t lhs{};
         if (!read_operand(ins, lhs)) { error = "ALU source outside memory"; return false; }
@@ -241,20 +251,23 @@ struct Cpu32 {
         std::uint32_t value{};
         if (ins.op == Op::add_rm32_r32) { value = lhs + rhs; set_add_flags(lhs, rhs, value); }
         else if (ins.op == Op::sub_rm32_r32 || ins.op == Op::cmp_rm32_r32) { value = lhs - rhs; set_sub_flags(lhs, rhs, value); }
-        else if (ins.op == Op::test_rm32_r32) { value = lhs & rhs; set_logic_flags(value); }
+        else if (ins.op == Op::test_rm32_r32 || ins.op == Op::and_rm32_r32) { value = lhs & rhs; set_logic_flags(value); }
+        else if (ins.op == Op::or_rm32_r32) { value = lhs | rhs; set_logic_flags(value); }
         else { value = lhs ^ rhs; set_logic_flags(value); }
         if (ins.op != Op::cmp_rm32_r32 && ins.op != Op::test_rm32_r32 &&
             !write_operand(ins, value)) { error = "ALU destination outside memory"; return false; }
         eip = next; return true;
       }
       case Op::add_r32_rm32: case Op::sub_r32_rm32: case Op::xor_r32_rm32:
-      case Op::cmp_r32_rm32: {
+      case Op::or_r32_rm32: case Op::and_r32_rm32: case Op::cmp_r32_rm32: {
         std::uint32_t rhs{};
         if (!read_operand(ins, rhs)) { error = "ALU source outside memory"; return false; }
         const std::uint32_t lhs = regs[ins.reg];
         std::uint32_t value{};
         if (ins.op == Op::add_r32_rm32) { value = lhs + rhs; set_add_flags(lhs, rhs, value); }
         else if (ins.op == Op::sub_r32_rm32 || ins.op == Op::cmp_r32_rm32) { value = lhs - rhs; set_sub_flags(lhs, rhs, value); }
+        else if (ins.op == Op::and_r32_rm32) { value = lhs & rhs; set_logic_flags(value); }
+        else if (ins.op == Op::or_r32_rm32) { value = lhs | rhs; set_logic_flags(value); }
         else { value = lhs ^ rhs; set_logic_flags(value); }
         if (ins.op != Op::cmp_r32_rm32) regs[ins.reg] = value;
         eip = next; return true;
