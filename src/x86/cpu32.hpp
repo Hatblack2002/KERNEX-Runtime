@@ -67,6 +67,18 @@ struct Cpu32 {
     switch (ins.op) {
       case Op::nop: eip = next; return true;
       case Op::int3: error = "INT3 breakpoint"; halted = true; return false;
+      case Op::push_imm32: {
+        if (regs[4] < 4) { error = "stack underflow"; return false; }
+        const std::uint32_t sp = regs[4] - 4;
+        if (!write32(sp, ins.immediate)) { error = "stack write outside memory"; return false; }
+        regs[4] = sp; eip = next; return true;
+      }
+      case Op::leave: {
+        std::uint32_t value{};
+        if (!read32(regs[5], value)) { error = "frame read outside memory"; return false; }
+        const std::uint32_t new_sp = regs[5] + 4;
+        regs[5] = value; regs[4] = new_sp; eip = next; return true;
+      }
       case Op::mov_reg_imm32: regs[ins.reg] = ins.immediate; eip = next; return true;
       case Op::push_reg: {
         if (regs[4] < 4) { error = "stack underflow"; return false; }
