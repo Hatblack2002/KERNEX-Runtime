@@ -4,13 +4,14 @@ KERNEX is a research project exploring a native Android ARM64 runtime for select
 
 ## Current status
 
-**Early research scaffold.** The repository now has a bounds-checked PE32/PE32+ header and section parser, import metadata reader, a bounded PE image-layout mapper, and a limited x86-32 decoder/interpreter. GitHub Actions has verified the portable C++17 tests on Linux x86-64 and ARM64, and the stress tests under AddressSanitizer and UndefinedBehaviorSanitizer.
+**Early research scaffold.** The repository now has a bounds-checked PE32/PE32+ header and section parser, import metadata reader, a bounded PE image-layout mapper, and a limited x86-32 decoder/interpreter. GitHub Actions has verified the portable C++17 tests on Linux x86-64 and ARM64, the stress tests under AddressSanitizer and UndefinedBehaviorSanitizer, and an Android NDK arm64-v8a cross-build of the native utilities. The Android job compiles native binaries only; it does not build an APK or verify execution on a device.
 
 The image mapper copies headers and file-backed section bytes into a zero-initialized buffer at their virtual addresses. It rejects oversized allocations, out-of-range entry points, invalid section ranges, and overlapping virtual sections. The mapper also supports bounded PE32 HIGHLOW and PE32+ DIR64 base relocations. It does **not** resolve imports, initialize TLS, enforce per-section memory permissions, emulate Windows APIs, translate graphics, or execute a PE application end-to-end. There is no Android APK or app-compatibility claim at this stage.
 
 ## Current milestone
 
 - Build the portable C++17 scaffold on x86-64 and ARM64 CI runners.
+- Cross-compile native utility targets for Android arm64-v8a using the Android NDK.
 - Emit a machine-readable build environment report.
 - Parse PE32 and PE32+ headers and section tables with bounds checks.
 - Translate file-backed RVAs safely.
